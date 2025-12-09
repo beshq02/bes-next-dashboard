@@ -5,9 +5,18 @@ export default async function WeeklyReport({ searchParams }) {
   const { ORD_NO: ordNo, fromAdmin, token } = await searchParams
   const ordNoC = await tables.sysAccessToken.getOrdNo()
   
+  // 取得員工資料（員工編號 226178）
+  let employeeData = null
+  try {
+    const employeeResult = await tables.frEmployee.getData('226178')
+    employeeData = employeeResult[0] || null
+  } catch (error) {
+    console.error('取得員工資料失敗:', error)
+  }
+  
   // 只有當 fromAdmin=true 時才允許跳過驗證（從 admin 頁面來的）
   if (fromAdmin === 'true' && ordNo) {
-    return <WeeklyReportClient skipAuth={true} adminOrdNo={ordNo} />
+    return <WeeklyReportClient skipAuth={true} adminOrdNo={ordNo} employeeData={employeeData} />
   }
   
   // 如果只有 token 參數而沒有 ORD_NO，從資料庫取得 ORD_NO
@@ -21,7 +30,7 @@ export default async function WeeklyReport({ searchParams }) {
   }
   
   // 其他情況都需要 token 驗證
-  return <WeeklyReportClient ordNoC={ordNoC} dbOrdNo={dbOrdNo} />
+  return <WeeklyReportClient ordNoC={ordNoC} dbOrdNo={dbOrdNo} employeeData={employeeData} />
 }
 
 export async function generateMetadata({ searchParams }) {

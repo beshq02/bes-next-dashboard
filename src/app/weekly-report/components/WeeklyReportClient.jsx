@@ -26,7 +26,7 @@ import RegulatoryTrack from '../sections/RegulatoryTrack'
 import CriticalpathCco from '../sections/CriticalpathCco'
 import ControversialCases from '../sections/ControversialCases'
 
-export default function WeeklyReportClient({ ordNoC, skipAuth = false, adminOrdNo = null, dbOrdNo = null }) {
+export default function WeeklyReportClient({ ordNoC, skipAuth = false, adminOrdNo = null, dbOrdNo = null, employeeData = null }) {
   console.log(ordNoC)
   // 獲取 URL 參數
   const { token, ordNo: urlOrdNo } = useGetUrlParams()
@@ -144,7 +144,7 @@ export default function WeeklyReportClient({ ordNoC, skipAuth = false, adminOrdN
             />
             <File data={data.wkFile} is102B1A={is102B1A} />
             <RegulatoryTrack data={data.wkRegulatoryTrack} is102B1A={is102B1A} />
-            <Footer />
+            <Footer employeeData={employeeData} />
           </Stack>
         ) : (
           <Stack spacing={2}>
@@ -170,7 +170,7 @@ export default function WeeklyReportClient({ ordNoC, skipAuth = false, adminOrdN
             <RegulatoryTrack data={data.wkRegulatoryTrack} />
             <ControversialCases data={data.wkControversialCases} />
             <ComControl data={data.wkComControl[0]} />
-            <Footer />
+            <Footer employeeData={employeeData} />
           </Stack>
         )}
       </Box>

@@ -1,6 +1,7 @@
 'use client'
 
-import { Box, Typography, Grid } from '@mui/material'
+import { Box, Grid, Typography } from '@mui/material'
+
 import EnsureTypeChip, { getSupportedEnsureTypes } from './EnsureTypeChip'
 
 /**

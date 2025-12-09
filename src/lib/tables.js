@@ -331,4 +331,14 @@ export const tables = {
       return await db.query(query)
     },
   },
+  frEmployee: {
+    getData: async employeeId => {
+      const query = `
+        SELECT *
+        FROM FR_EMPLOYEE
+        WHERE EMPLOYEE_ID = @employeeId
+      `
+      return await db.query(query, { employeeId })
+    },
+  },
 }

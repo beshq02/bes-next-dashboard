@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
+
 import { Chip } from '@mui/material'
 import {
   Security as SecurityIcon,
