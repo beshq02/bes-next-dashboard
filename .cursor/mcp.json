@@ -1,4 +1,4 @@
-{
+﻿{
   "mcpServers": {
     "context7": {
       "url": "https://mcp.context7.com/mcp",
@@ -69,6 +69,17 @@
         "Bes@75094900"
       ],
       "type": "stdio"
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": ["shadcn@latest", "mcp"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "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"
+      }
     }
   }
 }
