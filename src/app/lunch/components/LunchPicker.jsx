@@ -95,32 +95,50 @@ export default function LunchPicker() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* 結果顯示卡片 */}
-      <Card className="border-2 shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">今天吃什麼？</CardTitle>
-          <CardDescription>點擊下方按鈕隨機選擇</CardDescription>
+      <Card className="border-4 border-pink-300 shadow-2xl rounded-3xl bg-gradient-to-br from-white to-pink-50">
+        <CardHeader className="text-center pb-2">
+          <CardTitle className="text-3xl font-bold text-pink-600 flex items-center justify-center gap-2">
+            <span>✨</span>
+            <span>今天吃什麼好呢</span>
+            <span>✨</span>
+          </CardTitle>
+          <CardDescription className="text-purple-500 font-medium text-base">
+            點一下按鈕，讓魔法決定吧～ 🪄
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* 選擇結果 */}
-          <div className="flex flex-col items-center justify-center min-h-[200px] bg-gradient-to-br from-orange-100 to-yellow-100 rounded-lg p-8">
+          <div className="flex flex-col items-center justify-center min-h-[250px] bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 rounded-3xl p-8 border-4 border-dashed border-pink-300 shadow-inner relative overflow-hidden">
+            {/* 背景裝飾 */}
+            <div className="absolute top-2 left-2 text-2xl opacity-30">💕</div>
+            <div className="absolute top-2 right-2 text-2xl opacity-30">🌸</div>
+            <div className="absolute bottom-2 left-2 text-2xl opacity-30">🎀</div>
+            <div className="absolute bottom-2 right-2 text-2xl opacity-30">✨</div>
+            
             {selectedRestaurant ? (
-              <div className={`text-center transition-all duration-300 ${isSpinning ? 'scale-95 opacity-70' : 'scale-100 opacity-100'}`}>
-                <div className="text-8xl mb-4 animate-bounce">
+              <div className={`text-center transition-all duration-300 relative z-10 ${isSpinning ? 'scale-95 opacity-70' : 'scale-110 opacity-100'}`}>
+                <div className={`text-9xl mb-6 ${isSpinning ? 'animate-spin' : 'animate-bounce'}`}>
                   {selectedRestaurant.emoji}
                 </div>
-                <div className="text-4xl font-bold text-gray-800">
+                <div className="text-5xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent mb-2">
                   {selectedRestaurant.name}
                 </div>
                 {!isSpinning && (
-                  <div className="mt-4 text-green-600 font-semibold text-xl">
-                    就決定是你了！
+                  <div className="mt-6 space-y-2">
+                    <div className="text-pink-600 font-bold text-2xl animate-pulse">
+                      ♡ 就是你了！♡
+                    </div>
+                    <div className="text-purple-500 text-lg">
+                      要開心享用哦～ 😋
+                    </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="text-center text-gray-400">
-                <div className="text-6xl mb-4">🤔</div>
-                <div className="text-xl">準備好了嗎？</div>
+              <div className="text-center relative z-10">
+                <div className="text-7xl mb-4 animate-bounce">🎲✨</div>
+                <div className="text-2xl text-purple-500 font-bold">準備好了嗎～？</div>
+                <div className="text-lg text-pink-500 mt-2">來抽一個吧 ♡</div>
               </div>
             )}
           </div>
@@ -131,56 +149,67 @@ export default function LunchPicker() {
               onClick={handlePickRandom}
               disabled={isSpinning || restaurants.length === 0}
               size="lg"
-              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold px-8"
+              className="bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 hover:from-pink-500 hover:via-purple-500 hover:to-blue-500 text-white font-bold px-12 py-6 text-xl rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-4 border-white"
             >
-              <Shuffle className="mr-2 h-5 w-5" />
-              {isSpinning ? '抽選中...' : '隨機選擇'}
+              <Shuffle className="mr-3 h-6 w-6" />
+              {isSpinning ? '抽抽抽～ ✨' : '🎀 開始抽籤吧！'}
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* 餐廳列表管理 */}
-      <Card className="border-2 shadow-lg">
+      <Card className="border-4 border-purple-300 shadow-2xl rounded-3xl bg-gradient-to-br from-white to-purple-50">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>餐廳列表</span>
-            <Badge variant="secondary" className="text-sm">
-              共 {restaurants.length} 個選項
+          <CardTitle className="flex items-center justify-between text-purple-600">
+            <span className="flex items-center gap-2">
+              <span>📝</span>
+              <span>我的美食清單</span>
+            </span>
+            <Badge className="bg-gradient-to-r from-pink-400 to-purple-400 text-white text-base px-4 py-1 rounded-full">
+              🌟 {restaurants.length} 個選項
             </Badge>
           </CardTitle>
-          <CardDescription>管理你的午餐選項</CardDescription>
+          <CardDescription className="text-purple-500 font-medium">
+            新增你喜歡的餐廳吧～ ♡
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* 新增餐廳 */}
           <div className="flex gap-2">
             <Input
-              placeholder="輸入餐廳名稱..."
+              placeholder="✏️ 輸入餐廳名稱..."
               value={newRestaurant}
               onChange={(e) => setNewRestaurant(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddRestaurant()}
-              className="flex-1"
+              className="flex-1 border-3 border-pink-300 rounded-2xl text-lg py-5 focus:border-purple-400 focus:ring-purple-400"
             />
-            <Button onClick={handleAddRestaurant} className="shrink-0">
-              <Plus className="h-4 w-4 mr-1" />
+            <Button 
+              onClick={handleAddRestaurant} 
+              className="shrink-0 bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white rounded-2xl px-6 py-5"
+            >
+              <Plus className="h-5 w-5 mr-1" />
               新增
             </Button>
           </div>
 
           {/* 餐廳列表 */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto p-2">
-            {restaurants.map((restaurant) => (
+            {restaurants.map((restaurant, index) => (
               <div
                 key={restaurant.id}
-                className="flex items-center justify-between bg-white border-2 rounded-lg p-3 hover:shadow-md transition-shadow group"
+                className="flex items-center justify-between bg-gradient-to-br from-pink-50 to-purple-50 border-3 border-pink-200 rounded-2xl p-3 hover:shadow-lg hover:scale-105 transition-all duration-200 group hover:border-purple-300"
+                style={{
+                  animationDelay: `${index * 50}ms`
+                }}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">{restaurant.emoji}</span>
-                  <span className="font-medium text-sm">{restaurant.name}</span>
+                  <span className="text-3xl">{restaurant.emoji}</span>
+                  <span className="font-bold text-sm text-purple-700">{restaurant.name}</span>
                 </div>
                 <button
                   onClick={() => handleDeleteRestaurant(restaurant.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-pink-500 hover:text-pink-700 bg-white rounded-full p-1"
                   title="刪除"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -190,19 +219,22 @@ export default function LunchPicker() {
           </div>
 
           {restaurants.length === 0 && (
-            <div className="text-center py-8 text-gray-400">
-              <p className="mb-4">還沒有餐廳選項，請先新增一些！</p>
+            <div className="text-center py-12 text-purple-400">
+              <div className="text-5xl mb-4">🥺</div>
+              <p className="text-lg font-medium mb-2">還沒有餐廳呢～</p>
+              <p className="text-sm">快來新增一些美食選項吧！</p>
             </div>
           )}
 
           {/* 重置按鈕 */}
-          <div className="flex justify-end pt-4 border-t">
+          <div className="flex justify-end pt-4 border-t-2 border-purple-200">
             <Button
               onClick={handleResetToDefault}
               variant="outline"
               size="sm"
+              className="border-2 border-purple-300 text-purple-600 hover:bg-purple-50 rounded-full px-6"
             >
-              重置為預設列表
+              🔄 重置為預設列表
             </Button>
           </div>
         </CardContent>
