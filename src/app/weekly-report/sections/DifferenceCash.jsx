@@ -31,7 +31,9 @@ export default function DifferenceCash({ data, plotData, is102B1A = false }) {
     const ymd = `${y}-${m}-${d}`
     if (ymd === todayStr) {
       data = data.map(item =>
-        item.ESTM_COUNT === '11'
+        item.ESTM_COUNT === '11' &&
+        item.PROJECT_ID === '6220' &&
+        item.CALENDAR_DATE === '2026/01/04'
           ? {
               ...item,
               VOI_DAY: patchVoiDay,
@@ -40,7 +42,7 @@ export default function DifferenceCash({ data, plotData, is102B1A = false }) {
           : item
       )
     }
-  } 
+  }
 
   console.log(data)
 
