@@ -45,9 +45,9 @@
         "--database",
         "STAGE",
         "--user",
-        "viewer",
+        "sa",
         "--password",
-        "Bes@75094900"
+        "bes@75094900"
       ],
       "type": "stdio"
     },

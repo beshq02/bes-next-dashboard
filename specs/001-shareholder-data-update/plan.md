@@ -264,7 +264,7 @@ CREATE INDEX IX_testrachel_log_SCAN_TIME ON testrachel_log(SCAN_TIME)
    - **如果有手機號碼（任一欄位不為空）**：
      a. 優先使用最新修改的手機號碼（`UPDATED_MOBILE_PHONE`），如果為空則使用原始手機號碼（`ORIGINAL_MOBILE_PHONE`）
      b. 系統自動產生 4 位數字驗證碼
-     c. 系統透過 Node.js 簡訊模組（例如 `src/lib/sms.js`，由 `/api/shareholder/send-verification-code` 路由呼叫）直接呼叫簡訊服務商 HTTP API（e8d.tw）發送驗證碼至該手機號碼（驗證碼有效期為 1 分鐘，重新發送間隔為 1 分鐘）。系統必須在輸入驗證碼介面顯示倒數計時器（顯示剩餘秒數），當驗證碼過期（倒數至 0）時，自動跳回原介面（顯示手機號碼與操作按鈕），允許用戶重新發送驗證碼
+     c. 系統透過 Node.js 簡訊模組（例如 `src/lib/sms.js`，由 `/api/shareholder/send-verification-code` 路由呼叫）直接呼叫簡訊服務商 HTTP API（e8d.tw）發送驗證碼至該手機號碼（驗證碼有效期為 1 分鐘，重新發送間隔為 1 分鐘）。系統必須在輸入驗證碼介面顯示倒數計時器（顯示剩餘秒數），當驗證碼過期（倒數至 0）時，自動跳回原介面（顯示手機號碼與操作按鈕），允許用戶重新發送驗證碼。**系統必須在發送驗證碼時，在 `testrachel_log` 中建立或更新記錄，設定 `ACTION_TYPE = 'verify'`，並同步更新 `PHONE_NUMBER_USED` 和 `RANDOM_CODE` 欄位**
      d. 顯示身份驗證對話框，提示「驗證碼已發送至您的手機，請輸入驗證碼」
      e. 輸入欄位下方顯示說明：「請輸入手機驗證碼（4 碼數字）」
      f. 用戶輸入驗證碼 → 驗證是否正確（驗證碼有效期 1 分鐘）。若在 1 分鐘內嘗試重新發送驗證碼，系統將拒絕並顯示錯誤訊息。系統必須在輸入驗證碼介面顯示倒數計時器（顯示剩餘秒數），當驗證碼過期（倒數至 0）時，自動跳回原介面（顯示手機號碼與操作按鈕），允許用戶重新發送驗證碼
@@ -280,17 +280,9 @@ CREATE INDEX IX_testrachel_log_SCAN_TIME ON testrachel_log(SCAN_TIME)
    - 重新發送間隔未達 1 分鐘（僅手機驗證碼模式）→ 顯示「請於 X 秒後再次發送驗證碼」（顯示剩餘秒數）
 5. 驗證成功時，系統必須：
    a. 更新 testrachel.LOGIN_COUNT = LOGIN_COUNT + 1
-   b. 在 testrachel_log 建立一筆記錄，包含：
-      - 記錄ID（UUID，系統自動產生）
-      - 股東代號（SHAREHOLDER_CODE）
-      - 身分證字號（ID_NUMBER，從testrachel表帶入）
-      - 掃描進入頁面時間（SCAN_TIME，由系統自動填入）
-      - 驗證請求時間（LOGIN_TIME，由系統自動填入）
-      - 驗證類型（手機驗證或身分證驗證）
-      - 使用的手機號碼（僅手機驗證時）
-      - 手機驗證完成時間（僅手機驗證成功時）
-      - 系統產生的原始驗證碼（RANDOM_CODE，僅手機驗證時）
-      - HAS_UPDATED_DATA = 0（初始值）
+   b. 更新 testrachel_log 記錄（記錄已在發送驗證碼時建立，ACTION_TYPE = 'verify'），更新以下欄位：
+      - 手機驗證完成時間（PHONE_VERIFICATION_TIME，僅手機驗證成功時）
+      - 注意：PHONE_NUMBER_USED 和 RANDOM_CODE 已在發送驗證碼時記錄，不需要再次更新
    c. 載入並顯示股東資料（包含股東代號、姓名、身分證字號、出生年月日、原地址、原住家電話、原手機電話、更新地址、更新住家電話、更新手機電話等）
 
 #### 5. 資料更新流程

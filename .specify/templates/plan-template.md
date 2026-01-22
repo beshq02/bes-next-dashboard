@@ -31,7 +31,25 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+### I. 代碼品質與可讀性檢查
+- [ ] 所有變數、函數、組件命名是否清晰有意義？
+- [ ] 代碼結構是否遵循單一職責原則？
+- [ ] 複雜邏輯是否有適當註釋（繁體中文）？
+- [ ] 是否已配置 Prettier 和 ESLint？
+
+### II. 繁體中文文檔檢查
+- [ ] 技術文檔是否使用繁體中文？
+- [ ] 用戶介面文字是否使用繁體中文？
+- [ ] API 文檔是否有繁體中文說明？
+
+### III. Next.js 框架規範檢查
+- [ ] 是否使用 Next.js App Router？
+- [ ] Server Components 和 Client Components 使用是否適當？
+- [ ] API 路由是否遵循 RESTful 設計？
+- [ ] 檔案結構是否符合 Next.js 約定？
+- [ ] 是否充分利用 Next.js 效能優化功能？
+
+**違規處理**：如有違反憲法原則的情況，必須在「Complexity Tracking」部分說明理由和替代方案。
 
 ## Project Structure
 

@@ -99,6 +99,14 @@
   .dark ::-webkit-scrollbar-thumb:hover {
     background-color: rgba(255, 255, 255, 0.3);
   }
+
+  /* 隱藏 Next.js portal 元素（開發工具等） */
+  nextjs-portal {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
 }
 
 @layer base {

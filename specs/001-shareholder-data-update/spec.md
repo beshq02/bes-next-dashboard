@@ -104,7 +104,7 @@
 - **FR-031**: 手機號碼驗證碼必須為 4 位數字，有效期為 1 分鐘。驗證碼過期後必須重新發送。系統必須限制驗證碼重新發送間隔為 1 分鐘，即同一手機號碼在發送驗證碼後，必須等待 1 分鐘才能再次發送
 - **FR-032**: 手機號碼驗證時，身份驗證對話框必須顯示提示訊息「驗證碼已發送至您的手機，請輸入驗證碼」，並在輸入欄位下方顯示說明「請輸入手機驗證碼（4 碼數字）」。系統必須在輸入驗證碼介面顯示倒數計時器（顯示剩餘秒數），當驗證碼過期（倒數至 0）時，自動跳回原介面（顯示手機號碼與操作按鈕），允許用戶重新發送驗證碼
 - **FR-033**: 系統必須提供簡訊發送功能，使用簡訊服務商 API（例如：e8d.tw）發送驗證碼簡訊。簡訊發送功能實作於 Node.js 模組（例如 `src/lib/sms.js`），由 `/api/shareholder/send-verification-code` API 路由統一對外提供，不再依賴外部 Python 腳本
-- **FR-034**: 系統必須在 `testrachel_log` 資料表中記錄每次驗證行為（不論成功或失敗）。當股東掃描 QR Code 進入頁面並進行驗證時，系統必須建立一筆記錄，包含：記錄ID（UUID格式）、股東代號、身分證字號、掃描進入頁面時間（SCAN_TIME）、驗證請求時間（LOGIN_TIME）、驗證類型（手機驗證或身分證驗證）、使用的手機號碼（僅手機驗證時）、手機驗證完成時間（僅手機驗證成功時）、系統產生的原始驗證碼（RANDOM_CODE，僅手機驗證時）、初始狀態 `HAS_UPDATED_DATA = 0`。驗證成功或失敗都會建立 log 記錄。`testrachel_log` 表的主鍵為 `LOG_ID`（UUID），並以 `SHAREHOLDER_CODE` 和 `ID_NUMBER` 作為複合索引
+- **FR-034**: 系統必須在 `testrachel_log` 資料表中記錄每次驗證行為。當股東點擊「獲取驗證碼」按鈕發送手機驗證碼時，系統必須在 `testrachel_log` 中建立或更新一筆記錄，設定 `ACTION_TYPE = 'verify'`，並同步更新以下欄位：使用的手機號碼（`PHONE_NUMBER_USED`）、系統產生的原始驗證碼（`RANDOM_CODE`）、驗證類型（`VERIFICATION_TYPE = 'phone'`）、行為時間（`ACTION_TIME`）。當驗證成功時，系統必須更新該記錄的手機驗證完成時間（`PHONE_VERIFICATION_TIME`）。記錄包含：記錄ID（UUID格式）、股東代號、身分證字號、行為類型（`ACTION_TYPE`）、行為時間（`ACTION_TIME`）、驗證類型（手機驗證或身分證驗證）、使用的手機號碼（僅手機驗證時）、手機驗證完成時間（僅手機驗證成功時）、系統產生的原始驗證碼（`RANDOM_CODE`，僅手機驗證時）、初始狀態 `HAS_UPDATED_DATA = 0`。`testrachel_log` 表的主鍵為 `LOG_ID`（UUID），並以 `SHAREHOLDER_CODE` 和 `ID_NUMBER` 作為複合索引
 - **FR-035**: 系統必須在股東點擊「資料確認」按鈕且有任何欄位變更時，更新對應的 `testrachel_log` 記錄，設定 `HAS_UPDATED_DATA = 1`，並記錄各欄位的新值（僅記錄有變更的欄位：`UPDATED_ADDRESS`、`UPDATED_HOME_PHONE`、`UPDATED_MOBILE_PHONE`）
 - **FR-036**: 系統必須確保每次登入都對應 `testrachel_log` 表中的一筆記錄，用於追蹤完整的操作歷程
 - **FR-019**: 系統必須在網頁標題和身份驗證彈窗中顯示「中華工程股份有限公司股東資料回報」，並使用 `logo.png` 作為公司 Logo
@@ -133,248 +133,10 @@
 
 ## UI/UX Design Requirements
 
-### Design System Overview
+> **設計系統引用**：本功能採用專案共用 UI Design System（見 `specs/ui-design-system.md`）。  
+> 除下列「本功能特有」的 UI 規則外，所有按鈕、表單欄位、對話框、表格與 Alert 樣式皆依該設計系統的預設規範實作。
 
-- **主要 UI 元件庫**: Material-UI (MUI) v7.3.2
-- **輔助 UI 元件庫**: shadcn/ui (New York 風格) - 用於 Input OTP 元件（僅用於身分證末四碼輸入）
-- **樣式系統**: Tailwind CSS + CSS Variables
-- **設計原則**: 遵循 Material Design 3.0，確保一致性和無障礙設計
-
-### Color System (顏色系統)
-
-#### Primary Colors
-
-- **Primary**: `hsl(222.2, 47.4%, 11.2%)` - 主要按鈕、連結
-- **Primary Foreground**: `hsl(210, 40%, 98%)` - 主色調上的文字
-- **Secondary**: `hsl(210, 40%, 96.1%)` - 次要按鈕、背景
-
-#### Semantic Colors
-
-- **Success**: MUI 預設綠色 - 成功訊息
-- **Error/Destructive**: `hsl(0, 84.2%, 60.2%)` - 錯誤訊息、刪除操作
-- **Warning**: MUI 預設橙色 - 警告訊息
-- **Info**: MUI 預設藍色 - 資訊訊息
-
-#### Neutral Colors
-
-- **Background**: `hsl(0, 0%, 100%)` (淺色) / `hsl(222.2, 84%, 4.9%)` (深色)
-- **Foreground**: `hsl(222.2, 84%, 4.9%)` (淺色) / `hsl(210, 40%, 98%)` (深色)
-- **Border**: `hsl(214.3, 31.8%, 91.4%)` (淺色) / `hsl(217.2, 32.6%, 17.5%)` (深色)
-- **Muted**: `hsl(210, 40%, 96.1%)` - 次要背景、禁用狀態
-
-### Typography (字體系統)
-
-- **字體**: Roboto (`@fontsource/roboto`)
-- **標題**: h1 (40px) → h6 (16px)，使用 Medium 或 Bold 字重
-- **內文**: body1 (16px) - 主要內文，body2 (14px) - 次要內文
-- **說明文字**: caption (12px) - 標籤、註解
-- **按鈕文字**: 14px，Medium 字重
-
-### Spacing System (間距系統)
-
-- **Base Unit**: 8px
-- **常用間距**: xs (4px), sm (8px), md (16px), lg (24px), xl (32px)
-- **表單欄位間距**: md (16px)
-- **對話框內容 padding**: lg (24px)
-- **頁面邊距**: lg 或 xl (24-32px)
-
-### Component Specifications (元件規範)
-
-#### Buttons (按鈕)
-
-- **Contained** (主要): Primary 顏色，用於提交、確認
-- **Outlined** (次要): Primary 邊框，用於取消
-- **Text** (文字): 無背景，用於輔助操作
-- **尺寸**: Large (42px), Medium (36px), Small (30px)
-- **狀態**: Hover 顏色加深 10%，Disabled 透明度 0.38，Loading 顯示 CircularProgress
-
-#### Text Fields (輸入欄位)
-
-- **樣式**: Outlined variant（預設）
-- **高度**: 56px（含標籤）
-- **標籤**: 位於輸入框上方，body2 字體大小
-- **輔助文字**: 位於輸入框下方，caption 字體大小，Muted Foreground 顏色
-- **錯誤狀態**: 邊框和標籤變為 Error 顏色，顯示錯誤訊息
-- **Focus**: 邊框顏色 Primary，寬度 2px
-
-#### Input OTP (一次性密碼輸入)
-
-- **元件**: shadcn/ui Input OTP (`@/components/ui/input-otp`)
-- **使用場景**:
-  - **僅用於**身份驗證彈窗：身分證末四碼輸入（4 碼數字）
-- **配置**:
-  - **身分證末四碼**: `maxLength={4}`，僅允許數字（0-9），阻擋非數字輸入
-  - **輸入驗證**: 在 `onChange` 事件中進行自定義驗證與過濾，確保只接受 4 碼數字，少於 4 碼不觸發驗證
-- **佈局**:
-  - **身分證末四碼**: 4 個 InputOTPSlot（不需要分隔符），輸入滿 4 碼即自動送出驗證
-- **樣式**:
-  - 每個 Slot 寬度一致，高度與 TextField 一致（56px）
-  - Focus 狀態：邊框顏色 Primary，寬度 2px
-  - 錯誤狀態：邊框顏色 Error/Destructive
-  - 支援自動焦點移動：輸入完成後自動移至下一個欄位
-- **互動**:
-  - 支援貼上功能：可一次性貼上完整號碼
-  - 支援退格鍵：刪除當前欄位並返回上一個欄位
-  - 支援鍵盤導航：方向鍵可在欄位間移動
-- **無障礙**:
-  - 每個 Slot 有對應的 label
-  - 錯誤訊息與整個 Input OTP 組件關聯
-  - 支援螢幕閱讀器讀取
-
-#### Dialogs (對話框)
-
-- **最大寬度**: 600px（行動裝置：全寬減去 32px）
-- **圓角**: 4px
-- **背景**: Card 顏色，半透明遮罩 (rgba(0, 0, 0, 0.5))
-- **標題**: h6 字體大小，Medium 字重，padding lg
-- **內容**: padding lg，**不可滾動**（禁用滾動條）
-- **操作區**: padding md，按鈕右對齊
-- **身份驗證對話框特殊規範**:
-  - **自適應大小**: 對話框高度應根據內容自動調整，確保所有內容完整顯示
-  - **禁用滾動**: 對話框內容區域必須禁用滾動功能（`overflow: hidden`），上下滾動條都不應出現
-  - **錯誤訊息空間**: 必須在對話框底部預留足夠空間（至少 80px）用於顯示錯誤訊息（Alert 組件）
-  - **內容完整呈現**: 即使在不同螢幕尺寸下，對話框內容（標題、Logo、輸入欄位、錯誤訊息、按鈕）都必須完整顯示，不得被裁切或需要滾動才能查看
-  - **響應式設計**: 在行動裝置上，對話框應自動調整高度和間距，確保內容完整且無需滾動
-
-#### 感謝頁面 (Thank You Page)
-
-- **路由**: `/shareholder/update/[qrCode]/thank-you` 或使用查詢參數 `/shareholder/update/[qrCode]?success=true`
-- **觸發時機**: 資料修改成功提交後自動跳轉
-- **頁面內容**:
-  - **標題**: 「感謝您的配合」
-  - **主要訊息**: 「您的資料已成功更新，感謝您的配合與協助。」
-  - **成功圖示**: 顯示成功圖示（CheckCircle 或類似圖示）
-  - **公司 Logo**: 顯示 `logo.png` 和公司名稱「中華工程股份有限公司」
-  - **說明文字**: 「本系統所收集之資料僅供公司內部使用，我們將妥善保管您的個人資料，並遵循相關隱私保護法規。」
-- **樣式規範**:
-  - **佈局**: 置中對齊，最大寬度 600px
-  - **間距**: 上下 padding lg (24px)，左右 padding md (16px)
-  - **標題**: Typography variant="h4"，字體大小 24px，Bold 字重 (700)，Primary 顏色
-  - **主要訊息**: Typography variant="body1"，字體大小 16px，行高 1.6，text.primary 顏色
-  - **成功圖示**: 尺寸 64px × 64px，Success 顏色（綠色）
-  - **Logo**: 尺寸 48px × 48px，與公司名稱並排顯示
-- **響應式設計**: 行動裝置上自動調整間距和字體大小
-
-#### Paper (紙張容器)
-
-- **元件**: MUI Paper
-- **使用場景**: 管理頁面表格容器、表單卡片容器
-- **Elevation**: 1（輕微陰影，用於表格容器）
-- **圓角**: 預設圓角（MUI 預設）
-- **背景**: Card 顏色（白色或主題背景色）
-- **管理頁面表格容器規範**:
-  - **Padding**: lg (24px) - 容器內側間距
-  - **Margin**: 下方 marginBottom lg (24px) - 與下方元素間距
-  - **寬度**: 100%（填滿父容器寬度）
-  - **高度**: 自適應（根據內容自動調整）
-  - **內容結構**:
-    - **第一行（標題區域）**: 「股東列表」標題，獨立一行顯示，`marginBottom` md (16px)
-      - 標題：「股東列表」，Typography variant="h6"，字體大小 20px，Bold 字重 (700)，顏色 Primary
-      - 使用 `display="block"` 或獨立 Box，確保標題突出顯示
-    - **第二行（操作區域）**: 搜尋欄位與匯出按鈕並排顯示，使用 flexbox 佈局，`justifyContent="space-between"`，`alignItems="center"`，`marginBottom` md (16px)
-      - 搜尋欄位：TextField，`width` 280px（固定寬度，不超過標題寬度），variant="outlined"，placeholder：「請輸入搜尋關鍵字」，左側顯示 Search 圖示
-      - 按鈕：「匯出所有資料」，右側對齊，size="medium"，variant="contained"
-    - **第三行（表格區域）**: MUI X Data Grid
-
-#### Tables (表格)
-
-- **元件**: MUI X Data Grid (`@mui/x-data-grid`)
-- **容器**: 使用 MUI Paper 作為外層容器，elevation 1
-- **表頭**: Muted 背景，body2 字體大小，Medium 字重，高度 56px
-- **表體**: Card 背景，最小行高 52px，懸停時背景變為 Muted
-- **儲存格**: padding 水平 16px、垂直 8px，body2 字體大小
-- **分頁**: 表格內建分頁控制，每頁選項 [5, 10, 25, 50]
-- **空狀態**: 顯示「找不到符合條件的股東」
-- **響應式**: Data Grid 自動處理響應式佈局
-- **管理頁面表格特殊規範**:
-  - **標題區域（第一行）**:
-    - **佈局**: 獨立一行顯示，`display="block"`，`marginBottom` md (16px)
-    - **標題文字**: 「股東列表」，Typography variant="h6"，字體大小 20px，Bold 字重 (700)，顏色 Primary
-    - **視覺層次**: 標題應該突出顯示，作為頁面區塊的主要標識
-  - **操作區域（第二行）**:
-    - **佈局**: 使用 flexbox，`display="flex"`，`justifyContent="space-between"`，`alignItems="center"`，`marginBottom` md (16px)
-    - **搜尋欄位**: TextField，`width` 280px（固定寬度，確保不超過標題寬度），variant="outlined"，placeholder：「請輸入搜尋關鍵字」，左側顯示 Search 圖示（InputAdornment）
-    - **按鈕**: 「匯出所有資料」，`flex="0 0 auto"`（不擴展），右側對齊，size="medium"，variant="contained"
-    - **響應式**: 行動裝置（< 600px）時，搜尋欄位和按鈕垂直排列（`flexDirection="column"`），搜尋欄位全寬
-  - **表格內容**:
-    - **欄位順序**：股東代號（URL連結）、姓名、身分證字號、原始地址、更新地址、原始家用電話、更新家用電話、原始手機號碼、更新手機號碼、登入次數、修改次數、QR Code（含下載按鈕）
-    - **股東代號欄位**：顯示為可點擊的連結，點擊後開啟新分頁導向股東資料修正頁面（格式：`/shareholder/update/{uuid}`）
-    - **QR Code 欄位**：
-      - QR Code 圖片尺寸：80px × 80px，永遠保持正方形（使用 `object-fit: contain` 和固定寬高比 `aspect-ratio: 1 / 1`）
-      - 圖片容器：寬高固定為 80px × 80px，背景色 `#f5f5f5`，圓角 4px
-      - 下載按鈕：位於 QR Code 圖片旁，Small 尺寸，Outlined variant，顯示 Download 圖示
-    - **地址和電話欄位**：顯示原始值和更新值，如果值為空則顯示「-」
-    - **數字欄位**：登入次數和修改次數顯示為數字類型，預設值為 0
-
-#### Alerts (訊息提示)
-
-- **Error**: 紅色背景，用於錯誤訊息
-- **Success**: 綠色背景，用於成功訊息
-- **Warning**: 橙色背景，用於警告訊息
-- **Info**: 藍色背景，用於資訊訊息
-- **邊距**: 上下 16px
-- **圓角**: 4px
-- **圖示**: 左側顯示對應圖示
-
-### Responsive Design (響應式設計)
-
-- **行動裝置** (< 600px): 對話框全寬減去 32px，按鈕全寬垂直排列，表格水平滾動
-- **平板** (600px - 1200px): 對話框最大寬度 600px 居中，表格全寬顯示
-- **桌面** (> 1200px): 對話框最大寬度 600px 居中，保持緊湊佈局
-
-### Accessibility (無障礙設計)
-
-- **對比度**: 文字與背景對比度至少 4.5:1 (WCAG AA)
-- **鍵盤導航**: 所有互動元素可透過鍵盤操作，Tab 順序符合邏輯
-- **焦點狀態**: 2px 實線邊框，Primary 顏色
-- **螢幕閱讀器**: 表單欄位有對應 label，錯誤訊息與輸入欄位關聯
-
-### Logo & Branding (品牌識別)
-
-- **Logo 檔案**: `logo.png`
-- **顯示位置**: 身份驗證對話框標題區域、導覽列
-- **尺寸**: 對話框高度 40px，導覽列高度 48px
-- **公司名稱**: 「中華工程股份有限公司股東資料回報」，h5 字體大小 (20px)，Medium 字重
-
-### Navigation Bar (導覽列)
-
-#### 主頁面導覽列（股東資料修正頁面）
-
-- **元件**: MUI AppBar + Toolbar
-- **位置**: `position="static"`（不固定導覽列，隨頁面滾動）
-- **高度**: 64px（Toolbar 預設高度）
-- **背景**: 使用 MUI 預設 AppBar 背景色（白色或主題背景色）
-- **Elevation**: 4（輕微陰影，表示浮動效果）
-- **內容結構**:
-  - **Logo**: 左側顯示，尺寸 48px × 48px，與標題之間 gap 為 md (16px)
-  - **標題文字**: 「中華工程股份有限公司股東資料回報」，Typography variant="h5"，字體大小 20px，Medium 字重 (500)，左對齊
-  - **佈局**: 使用 Toolbar，`display="flex"`、`alignItems="center"`、`gap={2}` (16px)
-- **樣式規範**:
-  - 字體大小：20px（h5）
-  - 字重：500（Medium）
-  - 顏色：使用 MUI 預設文字顏色（Foreground）
-  - 對齊：左對齊（與 Logo 對齊）
-- **響應式**: 行動裝置時，標題文字自動換行或縮小字體
-
-#### 管理頁面導覽列（QR Code 列印頁面）
-
-- **元件**: MUI AppBar + Toolbar
-- **位置**: `position="static"`（不固定導覽列，隨頁面滾動）
-- **高度**: 64px（Toolbar 預設高度）
-- **背景**: 使用 MUI 預設 AppBar 背景色（白色或主題背景色）
-- **Elevation**: 4（輕微陰影，表示浮動效果）
-- **內容結構**:
-  - **Logo**: 左側顯示，尺寸 48px × 48px，與標題之間 gap 為 md (16px)
-  - **標題文字**: 「股東資料QR Code列印」，Typography variant="h5"，字體大小 20px，Medium 字重 (500)，左對齊
-  - **佈局**: 使用 Toolbar，`display="flex"`、`alignItems="center"`、`gap={2}` (16px)
-- **樣式規範**:
-  - 字體大小：20px（h5）
-  - 字重：500（Medium）
-  - 顏色：使用 MUI 預設文字顏色（Foreground）
-  - 對齊：左對齊（與 Logo 對齊）
-- **響應式**: 行動裝置時，標題文字自動換行或縮小字體
-
-#### 資料修改表單 (DataForm)
+### 資料修改表單 (DataForm)
 
 - **歡迎詞區塊**:
 
@@ -429,16 +191,16 @@
   - **行為**: 點擊後直接跳轉到感謝頁面，不顯示載入狀態，背景異步記錄修改次數
   - **間距**: 上方 marginTop 為 md (16px)
 
-- **謝詞及資料申明區塊**:
+-- **謝詞及資料申明區塊**:
   - **位置**: 提交按鈕下方
   - **內容**: 「感謝您的配合與協助。本系統所收集之資料僅供公司內部使用，我們將妥善保管您的個人資料，並遵循相關隱私保護法規。」
-  - **樣式**:
-    - Typography: body2 字體大小 (12px)，行高 1.6，顏色 text.secondary
-    - 上方有分隔線（borderTop: 1px solid divider）
-    - 置中對齊
-  - **間距**: 上方 marginTop 為 md (16px)，上方 paddingTop 為 md (16px)
+  - **樣式建議**（延伸自 Design System）:
+    - 使用較小字體（約 12px）、行高 1.6、文字顏色採次要文字色（text.secondary）
+    - 上方以分隔線與表單區塊區分
+    - 內文置中顯示
+  - **間距**: 與按鈕之間保留足夠間距（約 16px 上外距與 16px 上內距）
 
-### Error Handling UI (錯誤處理)
+### Error Handling UI (錯誤處理——本功能特有文案與行為)
 
 - **顯示位置**: 輸入欄位正下方
 - **樣式**: Error Alert 或紅色文字 (body2)
@@ -454,8 +216,8 @@
 
 ### Loading & Success States (載入與成功狀態)
 
-- **載入指示器**: 不需要載入狀態，點擊「資料確認」按鈕後立即跳轉
-- **跳轉行為**: 點擊按鈕後立即跳轉到感謝頁面，不顯示載入動畫
+- **載入指示器**: 不需要額外的 loading 動畫，點擊「資料確認」按鈕後立即跳轉
+- **跳轉行為**: 點擊按鈕後立即跳轉到感謝頁面，不顯示額外載入動畫
 - **背景處理**: 系統在背景異步調用 API 記錄修改次數，不影響頁面跳轉
 - **錯誤處理**: API 調用失敗時靜默處理，不影響用戶體驗
 
