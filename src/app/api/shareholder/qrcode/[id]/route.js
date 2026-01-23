@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server'
 import { generateQRCode } from '@/lib/qrcode'
 import { createErrorByCode, createSuccessResponse, ERROR_CODES } from '@/lib/errors'
 import db from '@/lib/db'
+import { getBaseUrlFromRequest } from '@/lib/url'
 
 /**
  * GET 請求處理器
@@ -88,21 +89,17 @@ export async function GET(request, { params }) {
       )
     }
     
-    // 取得 base URL（優先使用環境變數，否則從 request 取得）
-    let baseUrl = process.env.NEXT_PUBLIC_QRCODE_BASE_URL
+    // 取得 base URL（使用共用函數）
+    const baseUrl = getBaseUrlFromRequest(request)
     
-    if (!baseUrl) {
-      // 從 request 取得 base URL
-      const url = new URL(request.url)
-      // 將 0.0.0.0 替換為 localhost，方便掃描 QR Code
-      const host = url.host.replace('0.0.0.0', 'localhost')
-      baseUrl = `${url.protocol}//${host}`
-    }
+    // 產生 QR Code（標準解析度，不使用印刷模式，含 Logo）
+    const qrCodeData = await generateQRCode(qrCodeUUID, baseUrl, false, true)
     
-    // 產生 QR Code（標準解析度，不使用印刷模式）
-    const qrCodeData = await generateQRCode(qrCodeUUID, baseUrl, false)
-    
-    return NextResponse.json(createSuccessResponse(qrCodeData))
+    // 在回應中包含 baseUrl，供客戶端使用
+    return NextResponse.json(createSuccessResponse({
+      ...qrCodeData,
+      baseUrl, // 回傳 baseUrl 供客戶端使用
+    }))
   } catch (error) {
     console.error('QR Code 產生錯誤:', error)
     

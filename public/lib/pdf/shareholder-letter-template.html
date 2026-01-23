@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>股東通知書模板</title>
+  <style>
+      @page {
+      size: A4;              /* 設定列印紙張為 A4 */
+      margin: 0;             /* 列印時不留外邊距 */
+    }
+
+    body {
+      width: 210mm;          /* A4 寬度 */
+      height: 297mm;         /* A4 高度 */
+      margin: 0;             /* 移除瀏覽器預設外距 */
+      padding: 25mm 30mm;    /* 內距（上下 / 左右） */
+      font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif; /* 字型 */
+      font-size: 14px;       /* 基本文字大小 */
+      line-height: 1.8;      /* 行距 */
+      color: #000;           /* 文字顏色 */
+      box-sizing: border-box;/* 盒模型計算方式 */
+      text-align: left;      /* 全文預設左對齊 */
+    }
+
+    .letter-container {
+      width: 100%;
+      height: 100%;
+      display: flex;         /* 使用 flex 版型 */
+      flex-direction: column;/* 直向排列 */
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    /* ===== Header / 信頭 ===== */
+    .header {
+      width: 100%;
+      padding-bottom: 15px;  /* 信頭下方留白 */
+      margin-bottom: 30px;   /* 與內文間距 */
+    }
+
+    .company-title {
+      font-size: 22px;       /* 公司名稱字級 */
+      font-weight: bold;     /* 粗體 */
+      letter-spacing: 2px;   /* 字距 */
+      margin: 0;
+      text-align: center;     
+    }
+
+    /* ===== 稱謂 ===== */
+    .greeting {
+      margin: 25px 0;        /* 上下間距 */
+      font-size: 15px;       /* 字級 */
+      font-weight: normal;
+      text-align: left;      /* 左對齊 */
+    }
+
+    /* ===== 內文 ===== */
+    .content {
+      flex: 1;               /* 撐滿中間高度 */
+      width: 100%;
+      text-align: left;      /* 內文左對齊 */
+    }
+
+    .content p {
+      margin-bottom: 18px;   /* 段落間距 */
+      line-height: 1.8;      /* 行距 */
+      text-align: left;
+      text-indent: 2em;      /* 首行縮排 */
+    }
+
+    /* ===== QR Code 區塊 ===== */
+    .qrcode-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;   /* 置中顯示 */
+      margin: 35px 0;        /* 上下間距 */
+    }
+
+    .qrcode-image {
+      width: 45mm;           /* QR Code 寬度 */
+      height: 45mm;          /* QR Code 高度 */
+      border: 1px solid #000;/* 外框 */
+      padding: 2mm;          /* 內距 */
+      background-color: #fff;
+      box-sizing: border-box;
+      margin-bottom: 5px;   /* 與說明文字距離 */
+    }
+
+    .qrcode-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;   /* 圖片不變形 */
+    }
+
+    .qrcode-instruction {
+      font-size: 13px;       /* 說明文字大小 */
+      line-height: 1.7;      /* 行距 */
+      text-align: center;    /* 置中 */
+      max-width: 130mm;      /* 最大寬度 */
+    }
+
+    .qrcode-instruction p {
+      margin-bottom: 10px;   /* 段落間距 */
+    }
+
+    /* ===== 頁尾 / 簽名 ===== */
+    .footer {
+      margin-top: auto;      /* 推到底部 */
+      padding-top: 25px;     /* 上方留白 */
+      font-size: 14px;       /* 字級 */
+      text-align: right;     /* 右對齊 */
+    }
+
+    .footer-signature {
+      margin-top: 20px;      /* 簽名與上方距離 */
+      text-align: right;
+      font-weight: bold;     /* 簽名加粗 */
+    }
+
+    /* ===== 浮水印 ===== */
+    .watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(45deg);
+      font-size: 70pt;
+      font-weight: bold;
+      color: rgba(128, 128, 128, 0.08);
+      font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 0;
+      user-select: none;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="letter-container">
+    <!-- 浮水印 -->
+    <div class="watermark">中華工程</div>
+    <div class="header">
+      <div class="company-title">中華工程股份有限公司 通知書</div>
+    </div>
+    
+    <div class="greeting">
+      親愛的股東 {{name}} 您好：
+    </div>
+    
+    <div class="content">
+      <p>感謝您長期以來對本公司之支持與愛護，
+        為確保股東相關資料之正確性與即時性，
+        並持續提供您完善且順暢的服務，本公司特別辦理本次資料更新作業。
+      </p>
+      <p>敬請您撥冗，使用本通知書所附之 QR Code 進行線上資料確認與更新。
+        整個流程簡便安全，僅需數分鐘即可完成，懇請您依指示操作，以維護自身權益並協助本公司完成作業，誠摯感謝您的配合。</p>
+      
+      <div class="qrcode-section">
+        <div class="qrcode-image">
+          <img src="{{qrCodeImage}}" alt="QR Code" />
+        </div>
+        
+        <div class="qrcode-instruction">
+          <p>請使用智慧型手機或平板電腦之相機功能掃描上方 QR Code，並依畫面指示完成身分驗證及資料更新作業。</p>
+        </div>
+      </div>
+      
+      <div class="content">
+        <p>此 QR Code 為您個人專屬，請妥善保管，避免外流。如有任何疑問，歡迎致電：02-12345678 或 email：admin@example.com 與本公司聯繫。</p>
+      </div>
+      
+    </div>
+    
+    <div class="footer">
+      <div class="footer-signature">
+        中華工程股份有限公司 謹啟
+      </div>
+    </div>
+  </div>
+</body>
+</html>

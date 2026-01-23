@@ -39,7 +39,7 @@
 
 - 預期股東數量：1000-10000 筆（大型公司規模）
 - 主要頁面：2 個（股東資料更新頁面、QR Code 管理頁面）
-- API 端點：4-5 個（QR Code 解析、身份驗證、資料查詢、資料更新、批次 QR Code 產生）
+- API 端點：6-7 個（QR Code 檢查、QR Code 產生、發送驗證碼、身份驗證、資料查詢、資料更新、批次 QR Code 產生）
 
 ## Constitution Check
 
@@ -100,13 +100,18 @@ src/
 │   │       └── page.jsx              # 管理頁面（表格形式展現股東列表，自動顯示 QR Code，支援篩選和 Excel 匯出）
 │   └── api/
 │       └── shareholder/              # 股東相關 API
+│           ├── qr-check/             # QR Code 有效性檢查
+│           │   └── [id]/             # 動態路由：QR Code UUID
+│           │       └── route.js      # GET（檢查 QR Code 有效性並建立 visit 記錄）
+│           ├── send-verification-code/  # 發送手機驗證碼
+│           │   └── route.js          # POST（發送驗證碼並建立 verify 記錄）
 │           ├── verify/               # 身份驗證
-│           │   └── route.js
+│           │   └── route.js          # POST（驗證驗證碼或身分證末四碼）
 │           ├── data/                 # 資料查詢與更新
-│           │   └── [id]/             # 動態路由：股東 ID
+│           │   └── [id]/             # 動態路由：股東代號（6位數字）
 │           │       └── route.js      # GET（查詢）、PUT（更新）
 │           └── qrcode/               # QR Code 產生
-│               ├── [id]/              # 動態路由：股東識別碼（6位或7位數字）
+│               ├── [id]/              # 動態路由：股東識別碼（UUID）
 │               │   └── route.js       # GET（單一產生）
 │               └── batch/             # 批次產生（Phase 6）
 │                   └── route.js       # POST（批次產生）
@@ -211,12 +216,12 @@ CREATE TABLE testrachel_log (
     LOG_ID UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),  -- 記錄 ID（UUID格式主鍵）
     SHAREHOLDER_CODE NVARCHAR(6) NOT NULL,                -- 股東代號（6位數字）
     ID_NUMBER NVARCHAR(10) NOT NULL,                      -- 身分證字號（從testrachel表帶入）
-    SCAN_TIME DATETIME NOT NULL DEFAULT GETDATE(),        -- 掃描進入頁面時間
-    LOGIN_TIME DATETIME NOT NULL DEFAULT GETDATE(),       -- 驗證請求時間
+    ACTION_TYPE NVARCHAR(10) NOT NULL,                    -- 行為類型：'visit'（掃描進入）或 'verify'（驗證）
+    ACTION_TIME DATETIME NOT NULL DEFAULT GETDATE(),      -- 行為發生時間（統一時間欄位）
     VERIFICATION_TYPE NVARCHAR(10) NOT NULL,              -- 驗證類型：'phone' 或 'id'
     PHONE_NUMBER_USED NVARCHAR(20) NULL,                  -- 使用的手機號碼（僅手機驗證時）
     PHONE_VERIFICATION_TIME DATETIME NULL,                -- 手機驗證完成時間（僅手機驗證成功時）
-    RANDOM_CODE NVARCHAR(4) NULL,                         -- 系統產生的原始驗證碼（僅手機驗證時）
+    RANDOM_CODE NVARCHAR(4) NULL,                         -- 系統產生的原始驗證碼（儲存在資料庫，僅手機驗證時）
     HAS_UPDATED_DATA BIT NOT NULL DEFAULT 0,              -- 是否更新資料（0=否，1=是）
     UPDATED_ADDRESS NVARCHAR(200) NULL,                   -- 更新的地址（如有變更）
     UPDATED_HOME_PHONE NVARCHAR(20) NULL,                 -- 更新的住家電話（如有變更）
@@ -227,9 +232,14 @@ CREATE TABLE testrachel_log (
 CREATE INDEX IX_testrachel_log_SHAREHOLDER_CODE_ID_NUMBER ON testrachel_log(SHAREHOLDER_CODE, ID_NUMBER)
 CREATE INDEX IX_testrachel_log_SHAREHOLDER_CODE ON testrachel_log(SHAREHOLDER_CODE)
 CREATE INDEX IX_testrachel_log_ID_NUMBER ON testrachel_log(ID_NUMBER)
-CREATE INDEX IX_testrachel_log_LOGIN_TIME ON testrachel_log(LOGIN_TIME)
-CREATE INDEX IX_testrachel_log_SCAN_TIME ON testrachel_log(SCAN_TIME)
+CREATE INDEX IX_testrachel_log_ACTION_TIME ON testrachel_log(ACTION_TIME)
+CREATE INDEX IX_testrachel_log_ACTION_TYPE ON testrachel_log(ACTION_TYPE)
 ```
+
+**Log 記錄流程說明**：
+- **visit 階段**：當用戶掃描 QR Code 進入頁面時，系統透過 `/api/shareholder/qr-check/[id]` API 建立 `ACTION_TYPE = 'visit'` 的記錄
+- **verify 階段**：當用戶發送驗證碼或進行驗證時，系統更新現有記錄為 `ACTION_TYPE = 'verify'`，或建立新的 verify 記錄
+- **驗證碼儲存**：手機驗證碼儲存在 `RANDOM_CODE` 欄位中，驗證時從資料庫查詢比對（而非記憶體）
 
 **QR Code UUID 生成規則**:
 
@@ -259,31 +269,44 @@ CREATE INDEX IX_testrachel_log_SCAN_TIME ON testrachel_log(SCAN_TIME)
 **Flow**:
 
 1. QR Code 掃描 → 解析出 UUID（標準 UUID 格式）
-2. 系統根據 UUID 查詢對應股東資料 (WHERE UUID = uuid)
+2. **QR Code 有效性檢查**：系統透過 `/api/shareholder/qr-check/[id]` API 檢查 QR Code 是否存在且有效
+   - 根據 UUID 查詢對應股東資料 (WHERE UUID = uuid)
+   - 如果 QR Code 無效，返回錯誤並終止流程
+   - 如果 QR Code 有效，建立 `ACTION_TYPE = 'visit'` 的 log 記錄，記錄掃描行為
+   - 返回股東基本資料和手機號碼資訊（`hasPhoneNumber`, `phoneNumber`, `scanLogId`）
 3. 系統檢查該股東資料的手機號碼欄位（優先順序：`UPDATED_MOBILE_PHONE` → `ORIGINAL_MOBILE_PHONE`）
    - **如果有手機號碼（任一欄位不為空）**：
      a. 優先使用最新修改的手機號碼（`UPDATED_MOBILE_PHONE`），如果為空則使用原始手機號碼（`ORIGINAL_MOBILE_PHONE`）
-     b. 系統自動產生 4 位數字驗證碼
-     c. 系統透過 Node.js 簡訊模組（例如 `src/lib/sms.js`，由 `/api/shareholder/send-verification-code` 路由呼叫）直接呼叫簡訊服務商 HTTP API（e8d.tw）發送驗證碼至該手機號碼（驗證碼有效期為 1 分鐘，重新發送間隔為 1 分鐘）。系統必須在輸入驗證碼介面顯示倒數計時器（顯示剩餘秒數），當驗證碼過期（倒數至 0）時，自動跳回原介面（顯示手機號碼與操作按鈕），允許用戶重新發送驗證碼。**系統必須在發送驗證碼時，在 `testrachel_log` 中建立或更新記錄，設定 `ACTION_TYPE = 'verify'`，並同步更新 `PHONE_NUMBER_USED` 和 `RANDOM_CODE` 欄位**
+     b. 顯示身份驗證對話框，顯示手機號碼（遮罩處理）和兩個按鈕：「獲取驗證碼」和「改用身分證驗證」
+     c. 用戶點擊「獲取驗證碼」後，系統透過 `/api/shareholder/send-verification-code` API：
+        - 系統自動產生 4 位數字驗證碼
+        - 系統透過 Node.js 簡訊模組（`src/lib/sms.js`）直接呼叫簡訊服務商 HTTP API（e8d.tw）發送驗證碼至該手機號碼
+        - 驗證碼有效期為 1 分鐘
+        - 重新發送間隔：測試模式為 0 秒（允許立即重新發送），正式模式為 1 分鐘
+        - **系統在 `testrachel_log` 中更新現有記錄（從 visit 更新為 verify）或建立新記錄，設定 `ACTION_TYPE = 'verify'`，並同步更新 `PHONE_NUMBER_USED` 和 `RANDOM_CODE` 欄位**
+        - 驗證碼儲存在資料庫的 `RANDOM_CODE` 欄位中，驗證時從資料庫查詢比對
      d. 顯示身份驗證對話框，提示「驗證碼已發送至您的手機，請輸入驗證碼」
      e. 輸入欄位下方顯示說明：「請輸入手機驗證碼（4 碼數字）」
-     f. 用戶輸入驗證碼 → 驗證是否正確（驗證碼有效期 1 分鐘）。若在 1 分鐘內嘗試重新發送驗證碼，系統將拒絕並顯示錯誤訊息。系統必須在輸入驗證碼介面顯示倒數計時器（顯示剩餘秒數），當驗證碼過期（倒數至 0）時，自動跳回原介面（顯示手機號碼與操作按鈕），允許用戶重新發送驗證碼
+     f. 系統在輸入驗證碼介面顯示倒數計時器（顯示剩餘秒數），當驗證碼過期（倒數至 0）時，自動跳回原介面（顯示手機號碼與操作按鈕），允許用戶重新發送驗證碼
+     g. 用戶輸入驗證碼（輸入滿 4 碼時自動觸發驗證）→ 系統透過 `/api/shareholder/verify` API 驗證是否正確（從資料庫 `testrachel_log` 表的 `RANDOM_CODE` 欄位查詢比對，驗證碼有效期 1 分鐘）
    - **如果兩個手機號碼欄位都為空**：
      a. 顯示身份驗證對話框
      b. 輸入欄位下方顯示說明：「請輸入身分證末四碼」
-     c. 輸入身分證末四碼 → 驗證是否與 QR Code 對應的股東資料相符
-4. 驗證失敗時，在原本輸入驗證碼/身分證末四碼的彈窗內顯示錯誤資訊（不導向新頁面，以利重新輸入），並且**系統必須在 testrachel_log 中建立一筆記錄**（記錄失敗的驗證嘗試）：
-   - 格式錯誤 → 顯示「格式錯誤」錯誤資訊，並記錄 log
-   - QR Code 與驗證碼不符 → 顯示「請掃描信件上的 QR Code」錯誤資訊，並記錄 log
-   - 驗證碼不存在或打錯 → 重點顯示「請確認驗證碼」錯誤資訊，並用提示方式簡單顯示「請聯絡我們」的資訊，並記錄 log
-   - 驗證碼過期（僅手機驗證碼模式）→ 顯示「驗證碼已過期，請重新發送驗證碼」，並記錄 log
-   - 重新發送間隔未達 1 分鐘（僅手機驗證碼模式）→ 顯示「請於 X 秒後再次發送驗證碼」（顯示剩餘秒數）
+     c. 輸入身分證末四碼（輸入滿 4 碼時自動觸發驗證）→ 系統透過 `/api/shareholder/verify` API 驗證是否與 QR Code 對應的股東資料相符
+4. 驗證失敗時，在原本輸入驗證碼/身分證末四碼的彈窗內顯示錯誤資訊（不導向新頁面，以利重新輸入）：
+   - 格式錯誤 → 顯示「格式錯誤」錯誤資訊
+   - QR Code 與驗證碼不符 → 顯示「請掃描信件上的 QR Code」錯誤資訊
+   - 驗證碼不存在或打錯 → 重點顯示「請確認驗證碼」錯誤資訊，並用提示方式簡單顯示「請聯絡我們」的資訊
+   - 驗證碼過期（僅手機驗證碼模式）→ 顯示「驗證碼已過期，請重新發送驗證碼」
+   - 重新發送間隔未達 1 分鐘（僅手機驗證碼模式，正式模式）→ 顯示「請於 X 秒後再次發送驗證碼」（顯示剩餘秒數）
+   - 注意：驗證失敗時不建立新的 log 記錄（因為 log 已在發送驗證碼時建立）
 5. 驗證成功時，系統必須：
    a. 更新 testrachel.LOGIN_COUNT = LOGIN_COUNT + 1
    b. 更新 testrachel_log 記錄（記錄已在發送驗證碼時建立，ACTION_TYPE = 'verify'），更新以下欄位：
       - 手機驗證完成時間（PHONE_VERIFICATION_TIME，僅手機驗證成功時）
       - 注意：PHONE_NUMBER_USED 和 RANDOM_CODE 已在發送驗證碼時記錄，不需要再次更新
-   c. 載入並顯示股東資料（包含股東代號、姓名、身分證字號、出生年月日、原地址、原住家電話、原手機電話、更新地址、更新住家電話、更新手機電話等）
+   c. 返回驗證成功的資料（包含 `logId` 供後續更新日誌使用）
+   d. 前端使用 `shareholderCode` 透過 `/api/shareholder/data/[id]` API 載入並顯示完整股東資料（包含股東代號、姓名、身分證字號、出生年月日、原地址、原住家電話、原手機電話、更新地址、更新住家電話、更新手機電話等）
 
 #### 5. 資料更新流程
 
@@ -396,13 +419,14 @@ row.height = 80 // 調整行高以容納圖片
 
 主要 API 端點：
 
-1. `GET /api/shareholder/qrcode/[id]` - 產生單一 QR Code
-2. `POST /api/shareholder/qrcode/batch` - 批次產生 QR Code（管理頁面自動載入用）
-3. `POST /api/shareholder/verify` - 身份驗證
-4. `GET /api/shareholder/data/[id]` - 查詢股東資料
-5. `PUT /api/shareholder/data/[id]` - 更新股東資料
-6. `GET /api/shareholder/list` - 查詢所有股東列表（管理頁面用）
-7. `GET /api/shareholder/list` - 查詢股東列表（管理頁面用）
+1. `GET /api/shareholder/qr-check/[id]` - QR Code 有效性檢查（檢查 QR Code 是否存在且有效，建立 visit 記錄）
+2. `POST /api/shareholder/send-verification-code` - 發送手機驗證碼（產生並發送驗證碼，建立或更新 verify 記錄）
+3. `POST /api/shareholder/verify` - 身份驗證（驗證手機驗證碼或身分證末四碼，更新 verify 記錄）
+4. `GET /api/shareholder/qrcode/[id]` - 產生單一 QR Code
+5. `POST /api/shareholder/qrcode/batch` - 批次產生 QR Code（管理頁面自動載入用）
+6. `GET /api/shareholder/data/[id]` - 查詢股東資料
+7. `PUT /api/shareholder/data/[id]` - 更新股東資料（更新資料並記錄修改次數）
+8. `GET /api/shareholder/list` - 查詢股東列表（管理頁面用）
 
 主要頁面：
 
@@ -451,22 +475,27 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[testrachel_log]') AND type in (N'U'))
 BEGIN
     CREATE TABLE testrachel_log (
-        LOG_ID BIGINT IDENTITY(1,1) PRIMARY KEY,              -- 記錄 ID（自動遞增主鍵）
+        LOG_ID UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),  -- 記錄 ID（UUID格式主鍵）
         SHAREHOLDER_CODE NVARCHAR(6) NOT NULL,                -- 股東代號（6位數字）
-        LOGIN_TIME DATETIME NOT NULL DEFAULT GETDATE(),       -- 掃碼登入時間
+        ID_NUMBER NVARCHAR(10) NOT NULL,                      -- 身分證字號（從testrachel表帶入）
+        ACTION_TYPE NVARCHAR(10) NOT NULL,                    -- 行為類型：'visit'（掃描進入）或 'verify'（驗證）
+        ACTION_TIME DATETIME NOT NULL DEFAULT GETDATE(),      -- 行為發生時間（統一時間欄位）
         VERIFICATION_TYPE NVARCHAR(10) NOT NULL,              -- 驗證類型：'phone' 或 'id'
-        VERIFICATION_CODE NVARCHAR(4) NULL,                   -- 手機驗證碼（4位數字，僅手機驗證時）
         PHONE_NUMBER_USED NVARCHAR(20) NULL,                  -- 使用的手機號碼（僅手機驗證時）
+        PHONE_VERIFICATION_TIME DATETIME NULL,                -- 手機驗證完成時間（僅手機驗證成功時）
+        RANDOM_CODE NVARCHAR(4) NULL,                         -- 系統產生的原始驗證碼（儲存在資料庫，僅手機驗證時）
         HAS_UPDATED_DATA BIT NOT NULL DEFAULT 0,              -- 是否更新資料（0=否，1=是）
         UPDATED_ADDRESS NVARCHAR(200) NULL,                   -- 更新的地址（如有變更）
         UPDATED_HOME_PHONE NVARCHAR(20) NULL,                 -- 更新的住家電話（如有變更）
-        UPDATED_MOBILE_PHONE NVARCHAR(20) NULL,               -- 更新的手機電話（如有變更）
-        CREATED_AT DATETIME DEFAULT GETDATE()                 -- 記錄建立時間
+        UPDATED_MOBILE_PHONE NVARCHAR(20) NULL                -- 更新的手機電話（如有變更）
     )
 
     -- 建立索引以提升查詢效能
+    CREATE INDEX IX_testrachel_log_SHAREHOLDER_CODE_ID_NUMBER ON testrachel_log(SHAREHOLDER_CODE, ID_NUMBER)
     CREATE INDEX IX_testrachel_log_SHAREHOLDER_CODE ON testrachel_log(SHAREHOLDER_CODE)
-    CREATE INDEX IX_testrachel_log_LOGIN_TIME ON testrachel_log(LOGIN_TIME)
+    CREATE INDEX IX_testrachel_log_ID_NUMBER ON testrachel_log(ID_NUMBER)
+    CREATE INDEX IX_testrachel_log_ACTION_TIME ON testrachel_log(ACTION_TIME)
+    CREATE INDEX IX_testrachel_log_ACTION_TYPE ON testrachel_log(ACTION_TYPE)
 END
 GO
 

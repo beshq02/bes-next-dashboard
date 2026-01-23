@@ -27,6 +27,8 @@ import { DataGrid } from '@mui/x-data-grid'
 import { Search, Download } from '@mui/icons-material'
 import Image from 'next/image'
 import ExcelJS from 'exceljs'
+import { generateAllShareholdersPDF, generateShareholderPDF } from '@/lib/pdf/shareholder-letter'
+import { getBaseUrlFromClient, buildShareholderUpdateUrl } from '@/lib/url'
 
 export default function QRCodeBatchPage() {
   // 股東列表相關狀態
@@ -38,6 +40,8 @@ export default function QRCodeBatchPage() {
   // QR Code 相關狀態（儲存每個股東的 QR Code 資料）
   const [shareholderQRCodes, setShareholderQRCodes] = useState({})
   const [generatingQRCodes, setGeneratingQRCodes] = useState(false)
+  // baseUrl 狀態（從 API 取得，確保與 QR Code URL 一致）
+  const [baseUrl, setBaseUrl] = useState(null)
 
   // 表格分頁和篩選
   const [paginationModel, setPaginationModel] = useState({
@@ -185,6 +189,11 @@ export default function QRCodeBatchPage() {
           }
         })
         setShareholderQRCodes(prev => ({ ...prev, ...qrCodeMap }))
+        
+        // 儲存 baseUrl（如果 API 有回傳）
+        if (data.data.baseUrl) {
+          setBaseUrl(data.data.baseUrl)
+        }
       } else {
         console.error('產生 QR Code 失敗:', data.error?.message)
       }
@@ -195,14 +204,31 @@ export default function QRCodeBatchPage() {
     }
   }
 
-  // 下載單一 QR Code（使用 useCallback 確保函數穩定性）
-  const handleDownload = useCallback((qrCodeDataUrl, name, idNumber) => {
-    const link = document.createElement('a')
-    link.href = qrCodeDataUrl
-    link.download = `${name}_${idNumber}_qrcode.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  // 下載單一股東的 PDF 信件（使用 useCallback 確保函數穩定性）
+  const handleDownload = useCallback(async (shareholder, qrCodeDataUrl) => {
+    if (!qrCodeDataUrl) {
+      setError('QR Code 尚未產生，請稍候再試')
+      return
+    }
+    
+    try {
+      setError(null)
+      // 生成該股東的 PDF
+      const pdfBlob = await generateShareholderPDF(shareholder, qrCodeDataUrl)
+      
+      // 下載 PDF
+      const url = window.URL.createObjectURL(pdfBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${shareholder.name || '股東'}_${shareholder.idNumber || ''}_信件.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('下載 PDF 失敗:', error)
+      setError('下載 PDF 失敗，請稍後再試')
+    }
   }, [])
 
   // 匯出所有資料
@@ -256,6 +282,11 @@ export default function QRCodeBatchPage() {
           qrCodeMap[qr.shareholderCode] = qr
         }
       })
+      
+      // 儲存 baseUrl（如果 API 有回傳）
+      if (data.data.baseUrl) {
+        setBaseUrl(data.data.baseUrl)
+      }
 
       // 建立 Excel 工作簿
       const workbook = new ExcelJS.Workbook()
@@ -303,7 +334,9 @@ export default function QRCodeBatchPage() {
         const shareholder = allShareholders[i]
         const qrCode = qrCodeMap[shareholder.shareholderCode]
         const uuid = shareholder.uuid || ''
-        const fullUrl = uuid ? `${window.location.origin}/shareholder/update/${uuid}` : ''
+        // 使用共用函數建立 URL，優先使用 API 回傳的 baseUrl
+        const urlBaseUrl = getBaseUrlFromClient(baseUrl)
+        const fullUrl = uuid ? buildShareholderUpdateUrl(uuid, urlBaseUrl) : ''
 
         const row = worksheet.addRow({
           shareholderCode: shareholder.shareholderCode || '',
@@ -369,6 +402,81 @@ export default function QRCodeBatchPage() {
     }
   }
 
+  // 匯出所有股東的 PDF 信件
+  const handleExportPDF = async () => {
+    try {
+      setError(null)
+
+      // 取得所有股東資料（不受分頁限制）
+      const allShareholders = shareholders
+
+      if (allShareholders.length === 0) {
+        setError('沒有可匯出的資料')
+        return
+      }
+
+      // 為所有股東產生 QR Code
+      const allCodes = allShareholders
+        .map(s => s.shareholderCode)
+        .filter(code => code && code.length === 6)
+
+      if (allCodes.length === 0) {
+        setError('沒有有效的股東代號')
+        return
+      }
+
+      setGeneratingQRCodes(true)
+
+      // 呼叫批次產生 API，取得所有 QR Code（使用印刷模式取得高解析度 QR Code）
+      const response = await fetch('/api/shareholder/qrcode/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shareholderCodes: allCodes,
+          printMode: true, // 使用印刷模式產生高解析度 QR Code
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        setError('產生 QR Code 失敗，無法匯出 PDF')
+        setGeneratingQRCodes(false)
+        return
+      }
+
+      // 建立 QR Code 對應表
+      const qrCodeMap = {}
+      data.data.qrCodes.forEach(qr => {
+        if (!qr.error && qr.shareholderCode) {
+          qrCodeMap[qr.shareholderCode] = qr.qrCodeDataUrl
+        }
+      })
+
+      // 生成所有股東的 PDF
+      const pdfBlob = await generateAllShareholdersPDF(allShareholders, qrCodeMap)
+
+      // 下載 PDF
+      const fileName = `股東PDF信件_${new Date().toISOString().split('T')[0]}.pdf`
+      const url = window.URL.createObjectURL(pdfBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      setGeneratingQRCodes(false)
+    } catch (err) {
+      console.error('匯出 PDF 錯誤:', err)
+      setError('匯出 PDF 失敗，請稍後再試')
+      setGeneratingQRCodes(false)
+    }
+  }
+
   // 定義 Data Grid 欄位（使用 useMemo 避免每次渲染都重新創建）
   const columns = useMemo(
     () => [
@@ -382,9 +490,9 @@ export default function QRCodeBatchPage() {
             return <Typography variant="body2">-</Typography>
           }
           const uuid = params.row.uuid || null
-          const fullUrl = uuid
-            ? `${typeof window !== 'undefined' ? window.location.origin : ''}/shareholder/update/${uuid}`
-            : null
+          // 使用共用函數建立 URL，優先使用 API 回傳的 baseUrl
+          const urlBaseUrl = getBaseUrlFromClient(baseUrl)
+          const fullUrl = uuid ? buildShareholderUpdateUrl(uuid, urlBaseUrl) : null
           return fullUrl ? (
             <Link href={fullUrl} target="_blank" rel="noopener noreferrer">
               {params.value || '-'}
@@ -553,9 +661,8 @@ export default function QRCodeBatchPage() {
                     startIcon={<Download />}
                     onClick={() =>
                       handleDownload(
-                        qrCode.qrCodeDataUrl,
-                        params.row.name || '',
-                        params.row.idNumber || ''
+                        params.row,
+                        qrCode.qrCodeDataUrl
                       )
                     }
                     sx={{ 
@@ -579,7 +686,7 @@ export default function QRCodeBatchPage() {
         },
       },
     ],
-    [shareholderQRCodes, generatingQRCodes, handleDownload]
+    [shareholderQRCodes, generatingQRCodes, handleDownload, setError, baseUrl]
   )
 
   // 準備 Data Grid 的資料（需要 id 欄位）
@@ -672,21 +779,45 @@ export default function QRCodeBatchPage() {
             >
               股東列表
             </Typography>
-            <Button
-              variant="contained"
-              size="medium" // 文檔規範：Medium (36px)
-              startIcon={<Download />}
-              onClick={handleExportExcel}
-              disabled={generatingQRCodes || shareholders.length === 0}
+            <Box
               sx={{
-                fontSize: '14px', // 文檔規範：按鈕文字 14px
-                fontWeight: 500, // 文檔規範：Medium 字重
-                flex: { xs: '1 1 auto', sm: '0 0 auto' }, // 行動裝置全寬，桌面固定寬度
-                minWidth: { xs: '100%', sm: 'auto' }, // 行動裝置全寬
+                display: 'flex',
+                gap: 2,
+                flexDirection: { xs: 'column', sm: 'row' },
+                width: { xs: '100%', sm: 'auto' },
               }}
             >
-              {generatingQRCodes ? '匯出中...' : '匯出所有資料'}
-            </Button>
+              <Button
+                variant="contained"
+                size="medium" // 文檔規範：Medium (36px)
+                startIcon={<Download />}
+                onClick={handleExportExcel}
+                disabled={generatingQRCodes || shareholders.length === 0}
+                sx={{
+                  fontSize: '14px', // 文檔規範：按鈕文字 14px
+                  fontWeight: 500, // 文檔規範：Medium 字重
+                  flex: { xs: '1 1 auto', sm: '0 0 auto' }, // 行動裝置全寬，桌面固定寬度
+                  minWidth: { xs: '100%', sm: 'auto' }, // 行動裝置全寬
+                }}
+              >
+                {generatingQRCodes ? '匯出中...' : '匯出Excel資料'}
+              </Button>
+              <Button
+                variant="contained"
+                size="medium" // 文檔規範：Medium (36px)
+                startIcon={<Download />}
+                onClick={handleExportPDF}
+                disabled={generatingQRCodes || shareholders.length === 0}
+                sx={{
+                  fontSize: '14px', // 文檔規範：按鈕文字 14px
+                  fontWeight: 500, // 文檔規範：Medium 字重
+                  flex: { xs: '1 1 auto', sm: '0 0 auto' }, // 行動裝置全寬，桌面固定寬度
+                  minWidth: { xs: '100%', sm: 'auto' }, // 行動裝置全寬
+                }}
+              >
+                {generatingQRCodes ? '匯出中...' : '匯出PDF信件'}
+              </Button>
+            </Box>
           </Box>
 
           {/* 第二行：搜尋欄位（暫時隱藏） */}

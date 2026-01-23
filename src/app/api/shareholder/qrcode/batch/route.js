@@ -5,10 +5,11 @@
  * 批次產生多個股東的 QR Code
  */
 
+import db from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { generateQRCode } from '@/lib/qrcode'
-import { createErrorByCode, createSuccessResponse, ERROR_CODES } from '@/lib/errors'
-import db from '@/lib/db'
+import { getBaseUrlFromRequest } from '@/lib/url'
+import { ERROR_CODES, createErrorByCode, createSuccessResponse } from '@/lib/errors'
 
 /**
  * POST 請求處理器
@@ -18,7 +19,7 @@ import db from '@/lib/db'
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { shareholderCodes } = body
+    const { shareholderCodes, printMode = false } = body
     
     // 驗證必填欄位（接受6位股東代號陣列）
     if (!shareholderCodes || !Array.isArray(shareholderCodes) || shareholderCodes.length === 0) {
@@ -37,14 +38,8 @@ export async function POST(request) {
       )
     }
     
-    // 取得 base URL（優先使用環境變數，否則從 request 取得）
-    let baseUrl = process.env.NEXT_PUBLIC_QRCODE_BASE_URL
-    
-    if (!baseUrl) {
-      const url = new URL(request.url)
-      const host = url.host.replace('0.0.0.0', 'localhost')
-      baseUrl = `${url.protocol}//${host}`
-    }
+    // 取得 base URL（使用共用函數）
+    const baseUrl = getBaseUrlFromRequest(request)
     
     // 根據6位股東代號查詢所有股東資料（使用 UUID）
     // 使用參數化查詢，為每個值建立單獨的參數
@@ -99,11 +94,12 @@ export async function POST(request) {
             throw new Error('UUID 不存在')
           }
           
-          // 產生 QR Code（標準解析度，不使用印刷模式）
+          // 產生 QR Code（根據 printMode 參數決定解析度）
           const qrCodeData = await generateQRCode(
             qrCodeUUID,
             baseUrl,
-            false // 不使用印刷模式
+            printMode, // 使用請求中的 printMode 參數
+            true // 加入 Logo
           )
           
           return {
@@ -132,6 +128,7 @@ export async function POST(request) {
         total: qrCodeResults.length,
         successCount: qrCodeResults.filter((r) => !r.error).length,
         errorCount: qrCodeResults.filter((r) => r.error).length,
+        baseUrl, // 回傳 baseUrl 供客戶端使用
       })
     )
   } catch (error) {

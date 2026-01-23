@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react'
 import { keyframes } from '@emotion/react'
 import Image from 'next/image'
+import Lottie from 'lottie-react'
 import {
   Dialog,
   DialogTitle,
@@ -55,6 +56,8 @@ export default function AuthDialog({
   const [expiresAt, setExpiresAt] = useState(null) // 驗證碼過期時間
   const [remainingSeconds, setRemainingSeconds] = useState(null) // 剩餘秒數
   const [generatedCode, setGeneratedCode] = useState(null) // 產生的驗證碼（測試用）
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false) // 是否顯示成功動畫
+  const [verificationData, setVerificationData] = useState(null) // 儲存驗證成功的資料
 
   // 監聽驗證碼變化，當輸入滿 4 碼時自動觸發驗證
   useEffect(() => {
@@ -130,6 +133,9 @@ export default function AuthDialog({
       setExpiresAt(null)
       setRemainingSeconds(null)
       setGeneratedCode(null)
+      setShowSuccessAnimation(false)
+      setVerificationData(null)
+      setAnimationData(null)
     }
   }, [open])
 
@@ -276,9 +282,10 @@ export default function AuthDialog({
 
       // 驗證成功
       if (data.success && data.data) {
-        if (onSuccess) {
-          onSuccess(data.data)
-        }
+        // 儲存驗證資料並顯示成功動畫
+        setVerificationData(data.data)
+        setShowSuccessAnimation(true)
+        setLoading(false)
       } else {
         setError('認證失敗，請重新輸入手機驗證碼')
         setErrorType('auth_failed')
@@ -348,9 +355,10 @@ export default function AuthDialog({
 
       // 驗證成功
       if (data.success && data.data) {
-        if (onSuccess) {
-          onSuccess(data.data)
-        }
+        // 儲存驗證資料並顯示成功動畫
+        setVerificationData(data.data)
+        setShowSuccessAnimation(true)
+        setLoading(false)
       } else {
         setError('認證失敗，請重新輸入身分證末四碼')
         setErrorType('auth_failed')
@@ -449,8 +457,75 @@ export default function AuthDialog({
     }, 400)
   }
 
+  // 載入動畫資料
+  const [animationData, setAnimationData] = useState(null)
+
+  useEffect(() => {
+    if (showSuccessAnimation && !animationData) {
+      fetch('/animations/success.json')
+        .then((res) => res.json())
+        .then((data) => setAnimationData(data))
+        .catch((err) => {
+          console.error('載入動畫失敗:', err)
+          // 如果載入失敗，直接呼叫 onSuccess
+          if (onSuccess && verificationData) {
+            onSuccess(verificationData)
+          }
+        })
+    }
+  }, [showSuccessAnimation, animationData, onSuccess, verificationData])
+
+  // 處理動畫完成後的 callback
+  const handleAnimationComplete = () => {
+    if (onSuccess && verificationData) {
+      onSuccess(verificationData)
+    }
+  }
+
   // 渲染輸入欄位（根據驗證模式）
   const renderInputFields = () => {
+    // 顯示成功動畫
+    if (showSuccessAnimation && animationData) {
+      return (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '400px',
+            width: '100%',
+          }}
+        >
+          <Lottie
+            animationData={animationData}
+            loop={false}
+            autoplay={true}
+            onComplete={handleAnimationComplete}
+            style={{ width: 200, height: 200 }}
+          />
+        </Box>
+      )
+    }
+
+    // 動畫載入中
+    if (showSuccessAnimation && !animationData) {
+      return (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '400px',
+            width: '100%',
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      )
+    }
+
     if (verificationMode === 'loading' || sendingCode) {
       return (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">

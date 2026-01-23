@@ -7,11 +7,20 @@
 
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Box, Typography, AppBar, Toolbar } from '@mui/material'
 import Image from 'next/image'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import Lottie from 'lottie-react'
 
 export default function ThankYouPage() {
+  const [animationData, setAnimationData] = useState(null)
+
+  useEffect(() => {
+    fetch('/animations/Thank you.json')
+      .then((res) => res.json())
+      .then((data) => setAnimationData(data))
+      .catch((err) => console.error('載入動畫失敗:', err))
+  }, [])
   return (
     <Box
       sx={{
@@ -78,13 +87,25 @@ export default function ThankYouPage() {
             gap: 3,
           }}
         >
-          {/* 成功圖示 */}
-          <CheckCircleIcon
-            sx={{
-              fontSize: 64,
-              color: 'success.main',
-            }}
-          />
+          {/* 成功動畫 */}
+          {animationData ? (
+            <Lottie
+              animationData={animationData}
+              loop={true}
+              autoplay={true}
+              style={{ width: 200, height: 200 }}
+            />
+          ) : (
+            <Box
+              sx={{
+                width: 200,
+                height: 200,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            />
+          )}
 
           {/* 標題 */}
           <Typography

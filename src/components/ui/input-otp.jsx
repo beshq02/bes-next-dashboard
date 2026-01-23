@@ -1,16 +1,15 @@
 "use client"
 
 import * as React from "react"
-import { OTPInput, OTPInputContext } from "input-otp"
-import { Minus } from "lucide-react"
-
 import { cn } from "@/lib/utils"
+import { Minus } from "lucide-react"
+import { OTPInput, OTPInputContext } from "input-otp"
 
 const InputOTP = React.forwardRef(({ className, containerClassName, ...props }, ref) => (
   <OTPInput
     ref={ref}
     containerClassName={cn("flex items-center gap-2 has-[:disabled]:opacity-50", containerClassName)}
-    className={cn("disabled:cursor-not-allowed justify-center items-center", className)}
+    className={cn("justify-center items-center", className)}
     {...props} />
 ))
 InputOTP.displayName = "InputOTP"
@@ -37,7 +36,7 @@ const InputOTPSlot = React.forwardRef(({ index, className, ...props }, ref) => {
       {hasFakeCaret && (
         <div
           className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-4 w-px animate-caret-blink bg-foreground duration-1000" />
+          <div className="animate-caret-blink h-4 w-px bg-foreground duration-1000" />
         </div>
       )}
     </div>)
