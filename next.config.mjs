@@ -9,7 +9,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'tupiansvr.bes.com.tw',
+        hostname: 'cpm2.bes.com.tw',
         pathname: '/**',
       },
     ],
