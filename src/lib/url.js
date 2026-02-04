@@ -6,27 +6,20 @@
 /**
  * 取得 base URL（伺服器端使用）
  * @param {Request} request - Next.js Request 物件
- * @returns {string} base URL（例如：http://localhost:6230 或 https://xxx.ngrok-free.app）
+ * @returns {string} base URL（例如：http://localhost:6230）
  */
 export function getBaseUrlFromRequest(request) {
-  // 1. 優先使用環境變數 NEXT_PUBLIC_QRCODE_BASE_URL
-  let baseUrl = process.env.NEXT_PUBLIC_QRCODE_BASE_URL
-  
-  if (!baseUrl) {
-    const url = new URL(request.url)
-    const host = url.host
-    
-    // 2. 自動偵測 ngrok URL
-    if (host.includes('ngrok.io') || host.includes('ngrok.app') || host.includes('ngrok-free.app')) {
-      baseUrl = `${url.protocol}//${host}`
-    } else {
-      // 3. 一般情況，將 0.0.0.0 替換為 localhost
-      const normalizedHost = host.replace('0.0.0.0', 'localhost')
-      baseUrl = `${url.protocol}//${normalizedHost}`
-    }
-  }
-  
-  return baseUrl
+  const headers = request.headers
+
+  // 從 headers 取得 host（支援反向代理）
+  const host = headers.get('x-forwarded-host') || headers.get('host') || ''
+
+  // 從 headers 取得 protocol（支援反向代理）
+  const protocol = headers.get('x-forwarded-proto') || 'http'
+
+  // 將 0.0.0.0 替換為 localhost
+  const normalizedHost = host.replace('0.0.0.0', 'localhost')
+  return `${protocol}://${normalizedHost}`
 }
 
 /**
