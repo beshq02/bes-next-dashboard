@@ -28,11 +28,20 @@ class Database {
 
   async connect() {
     try {
-      if (!this.pool) {
+      // 檢查連接池是否存在且已連接
+      if (!this.pool || !this.pool.connected) {
+        if (this.pool) {
+          try {
+            await this.pool.close()
+          } catch (e) {
+            // 忽略關閉錯誤
+          }
+        }
         this.pool = await new sql.ConnectionPool(sqlConfig).connect()
       }
       return this.pool
     } catch (err) {
+      console.error('資料庫連接錯誤:', err)
       throw new Error(`資料庫連接失敗: ${err.message}`)
     }
   }
@@ -43,12 +52,28 @@ class Database {
       const request = pool.request()
 
       Object.entries(params).forEach(([key, value]) => {
-        request.input(key, value)
+        // 根據值的類型自動推斷 SQL 類型
+        if (typeof value === 'string') {
+          request.input(key, sql.NVarChar, value)
+        } else if (typeof value === 'number') {
+          request.input(key, sql.Int, value)
+        } else if (value === null || value === undefined) {
+          request.input(key, sql.NVarChar, value)
+        } else {
+          request.input(key, value)
+        }
       })
 
       const result = await request.query(queryString)
       return result.recordset
     } catch (err) {
+      console.error('資料庫查詢錯誤詳情:', {
+        message: err.message,
+        code: err.code,
+        originalError: err.originalError,
+        query: queryString,
+        params: params
+      })
       throw new Error(`資料庫查詢失敗: ${err.message}`)
     }
   }
