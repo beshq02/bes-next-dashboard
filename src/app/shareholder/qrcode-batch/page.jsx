@@ -509,9 +509,9 @@ export default function QRCodeBatchPage() {
         flex: 0,
       },
       {
-        field: 'idNumber',
-        headerName: '身分證字號',
-        width: 120,
+        field: 'idNumberLast4',
+        headerName: '身分證末四碼',
+        width: 110,
         flex: 0,
       },
       {
@@ -602,91 +602,14 @@ export default function QRCodeBatchPage() {
           return <Typography variant="body2">{count}</Typography>
         },
       },
-      {
-        field: 'qrCode',
-        headerName: 'QR Code',
-        width: 240,
-        flex: 0,
-        sortable: false,
-        filterable: false,
-        renderCell: params => {
-          if (!params || !params.row) {
-            return <Typography variant="body2" color="text.secondary">-</Typography>
-          }
-          const qrCode = shareholderQRCodes[params.row.shareholderCode]
-          return (
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-                gap: 1,
-                width: '100%',
-                padding: '8px 4px',
-                height: '100%', // 填滿父容器高度（實際高度由 DataGrid rowHeight 控制）
-                boxSizing: 'border-box',
-              }}
-            >
-              {qrCode?.qrCodeDataUrl ? (
-                <>
-                  <Box
-                    sx={{
-                      width: '100px',
-                      height: '100px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: '#f5f5f5',
-                      borderRadius: 1,
-                      overflow: 'hidden',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <img
-                      src={qrCode.qrCodeDataUrl}
-                      alt={`${params.row.name || ''} QR Code`}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                        display: 'block',
-                        aspectRatio: '1 / 1',
-                      }}
-                    />
-                  </Box>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<Download />}
-                    onClick={() =>
-                      handleDownload(
-                        params.row,
-                        qrCode.qrCodeDataUrl
-                      )
-                    }
-                    sx={{ 
-                      minWidth: 'auto', 
-                      fontSize: '12px', 
-                      padding: '4px 8px',
-                    }}
-                  >
-                    下載
-                  </Button>
-                </>
-              ) : generatingQRCodes ? (
-                <CircularProgress size={20} />
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '12px' }}>
-                  載入中...
-                </Typography>
-              )}
-            </Box>
-          )
-        },
-      },
+      // QR Code 欄位已隱藏
+      // {
+      //   field: 'qrCode',
+      //   headerName: 'QR Code',
+      //   ...
+      // },
     ],
-    [shareholderQRCodes, generatingQRCodes, handleDownload, setError, baseUrl]
+    [baseUrl]
   )
 
   // 準備 Data Grid 的資料（需要 id 欄位）
@@ -787,36 +710,37 @@ export default function QRCodeBatchPage() {
                 width: { xs: '100%', sm: 'auto' },
               }}
             >
-              <Button
+              {/* 匯出按鈕已隱藏 */}
+              {/* <Button
                 variant="contained"
-                size="medium" // 文檔規範：Medium (36px)
+                size="medium"
                 startIcon={<Download />}
                 onClick={handleExportExcel}
                 disabled={generatingQRCodes || shareholders.length === 0}
                 sx={{
-                  fontSize: '14px', // 文檔規範：按鈕文字 14px
-                  fontWeight: 500, // 文檔規範：Medium 字重
-                  flex: { xs: '1 1 auto', sm: '0 0 auto' }, // 行動裝置全寬，桌面固定寬度
-                  minWidth: { xs: '100%', sm: 'auto' }, // 行動裝置全寬
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  flex: { xs: '1 1 auto', sm: '0 0 auto' },
+                  minWidth: { xs: '100%', sm: 'auto' },
                 }}
               >
                 {generatingQRCodes ? '匯出中...' : '匯出Excel資料'}
               </Button>
               <Button
                 variant="contained"
-                size="medium" // 文檔規範：Medium (36px)
+                size="medium"
                 startIcon={<Download />}
                 onClick={handleExportPDF}
                 disabled={generatingQRCodes || shareholders.length === 0}
                 sx={{
-                  fontSize: '14px', // 文檔規範：按鈕文字 14px
-                  fontWeight: 500, // 文檔規範：Medium 字重
-                  flex: { xs: '1 1 auto', sm: '0 0 auto' }, // 行動裝置全寬，桌面固定寬度
-                  minWidth: { xs: '100%', sm: 'auto' }, // 行動裝置全寬
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  flex: { xs: '1 1 auto', sm: '0 0 auto' },
+                  minWidth: { xs: '100%', sm: 'auto' },
                 }}
               >
                 {generatingQRCodes ? '匯出中...' : '匯出PDF信件'}
-              </Button>
+              </Button> */}
             </Box>
           </Box>
 
@@ -869,7 +793,7 @@ export default function QRCodeBatchPage() {
                 disableColumnMenu
                 disableColumnFilter
                 // 固定每列高度，避免因為 QR Code 欄位顯示/隱藏導致可見筆數改變
-                rowHeight={140}
+                rowHeight={52}
                         sx={{
                   width: '100%',
                   '& .MuiDataGrid-root': {

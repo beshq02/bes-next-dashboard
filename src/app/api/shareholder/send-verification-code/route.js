@@ -72,8 +72,8 @@ export async function POST(request) {
 
     // 查詢股東資料
     const query = `
-      SELECT SHAREHOLDER_CODE, ID_NUMBER, UPDATED_MOBILE_PHONE, ORIGINAL_MOBILE_PHONE
-      FROM [STAGE].[dbo].[testrachel]
+      SELECT SHAREHOLDER_CODE, UUID, UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1
+      FROM [STAGE].[dbo].[SHAREHOLDER]
       WHERE UUID = @uuid
     `
 
@@ -87,7 +87,7 @@ export async function POST(request) {
     }
 
     const shareholder = shareholders[0]
-    const expectedPhone = shareholder.UPDATED_MOBILE_PHONE || shareholder.ORIGINAL_MOBILE_PHONE
+    const expectedPhone = shareholder.UPDATED_MOBILE_PHONE_1 || shareholder.MOBILE_PHONE_1
 
     // 驗證手機號碼是否與股東資料一致
     if (phoneNumber !== expectedPhone) {
@@ -158,13 +158,13 @@ export async function POST(request) {
       console.log(`[正式模式] 簡訊發送成功`)
     }
 
-    // 記錄 verify 行為到 testrachel_log
+    // 記錄 verify 行為到 SHAREHOLDER_LOG
     // 如果有 scanLogId，更新現有記錄；否則建立新記錄
     try {
       if (scanLogId) {
         // 更新現有記錄（從 visit 更新為 verify）
         const updateLogQuery = `
-          UPDATE [STAGE].[dbo].[testrachel_log]
+          UPDATE [STAGE].[dbo].[SHAREHOLDER_LOG]
           SET ACTION_TYPE = 'verify',
               ACTION_TIME = GETDATE(),
               VERIFICATION_TYPE = 'phone',
@@ -182,15 +182,15 @@ export async function POST(request) {
         // 建立新記錄（相容舊流程）
         const logId = crypto.randomUUID()
         const insertLogQuery = `
-          INSERT INTO [STAGE].[dbo].[testrachel_log]
-          (LOG_ID, SHAREHOLDER_CODE, ID_NUMBER, ACTION_TYPE, ACTION_TIME, VERIFICATION_TYPE, PHONE_NUMBER_USED, RANDOM_CODE, HAS_UPDATED_DATA)
+          INSERT INTO [STAGE].[dbo].[SHAREHOLDER_LOG]
+          (LOG_ID, SHAREHOLDER_UUID, SHAREHOLDER_CODE, ACTION_TYPE, ACTION_TIME, VERIFICATION_TYPE, PHONE_NUMBER_USED, RANDOM_CODE, HAS_UPDATED_DATA)
           VALUES
-          (@logId, @shareholderCode, @idNumber, 'verify', GETDATE(), 'phone', @phoneNumber, @randomCode, 0)
+          (@logId, @shareholderUuid, @shareholderCode, 'verify', GETDATE(), 'phone', @phoneNumber, @randomCode, 0)
         `
         await db.query(insertLogQuery, {
           logId,
+          shareholderUuid: shareholder.UUID,
           shareholderCode: shareholder.SHAREHOLDER_CODE,
-          idNumber: shareholder.ID_NUMBER,
           phoneNumber,
           randomCode: verificationCode,
         })

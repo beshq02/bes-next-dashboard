@@ -19,18 +19,31 @@ const InputOTPGroup = React.forwardRef(({ className, ...props }, ref) => (
 ))
 InputOTPGroup.displayName = "InputOTPGroup"
 
-const InputOTPSlot = React.forwardRef(({ index, className, ...props }, ref) => {
+const InputOTPSlot = React.forwardRef(({ index, className, size = "default", ...props }, ref) => {
   const inputOTPContext = React.useContext(OTPInputContext)
   const { char, hasFakeCaret, isActive } = inputOTPContext.slots[index]
+
+  const sizeClasses = {
+    default: "h-9 w-9 text-sm",
+    lg: "flex-1 aspect-square min-w-0 font-semibold",
+  }
+
+  const sizeStyles = size === "lg" ? {
+    height: 'clamp(60px, 18vw, 100px)',
+    width: 'clamp(60px, 18vw, 100px)',
+    fontSize: 'clamp(24px, 7vw, 48px)',
+  } : {}
 
   return (
     (<div
       ref={ref}
       className={cn(
-        "relative flex h-9 w-9 items-center justify-center border-y border-r border-input text-sm shadow-sm transition-all first:rounded-l-md first:border-l last:rounded-r-md",
-        isActive && "z-10 ring-1 ring-ring",
+        "relative flex items-center justify-center border-y border-r border-input shadow-sm transition-all first:rounded-l-md first:border-l last:rounded-r-md",
+        sizeClasses[size] || sizeClasses.default,
+        isActive && "z-10 ring-2 ring-ring",
         className
       )}
+      style={sizeStyles}
       {...props}>
       {char}
       {hasFakeCaret && (

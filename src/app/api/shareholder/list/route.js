@@ -19,20 +19,20 @@ export async function GET(request) {
   try {
     // 查詢所有股東資料（包含所有需要的欄位）
     const query = `
-      SELECT 
-        SHAREHOLDER_CODE, 
-        ID_NUMBER, 
-        NAME, 
+      SELECT
+        SHAREHOLDER_CODE,
+        NAME,
         UUID,
+        ID_LAST_FOUR,
         ORIGINAL_ADDRESS,
         UPDATED_ADDRESS,
-        ORIGINAL_HOME_PHONE,
-        UPDATED_HOME_PHONE,
-        ORIGINAL_MOBILE_PHONE,
-        UPDATED_MOBILE_PHONE,
+        HOME_PHONE_1,
+        UPDATED_HOME_PHONE_1,
+        MOBILE_PHONE_1,
+        UPDATED_MOBILE_PHONE_1,
         LOGIN_COUNT,
         UPDATE_COUNT
-      FROM [STAGE].[dbo].[testrachel]
+      FROM [STAGE].[dbo].[SHAREHOLDER]
       ORDER BY SHAREHOLDER_CODE ASC
     `
     
@@ -83,28 +83,28 @@ export async function GET(request) {
           SHAREHOLDER_CODE: getField(shareholder, 'SHAREHOLDER_CODE', 'shareholder_code'),
           ORIGINAL_ADDRESS: getField(shareholder, 'ORIGINAL_ADDRESS', 'original_address'),
           UPDATED_ADDRESS: getField(shareholder, 'UPDATED_ADDRESS', 'updated_address'),
-          ORIGINAL_HOME_PHONE: getField(shareholder, 'ORIGINAL_HOME_PHONE', 'original_home_phone'),
-          UPDATED_HOME_PHONE: getField(shareholder, 'UPDATED_HOME_PHONE', 'updated_home_phone'),
-          ORIGINAL_MOBILE_PHONE: getField(shareholder, 'ORIGINAL_MOBILE_PHONE', 'original_mobile_phone'),
-          UPDATED_MOBILE_PHONE: getField(shareholder, 'UPDATED_MOBILE_PHONE', 'updated_mobile_phone'),
+          HOME_PHONE_1: getField(shareholder, 'HOME_PHONE_1', 'home_phone_1'),
+          UPDATED_HOME_PHONE_1: getField(shareholder, 'UPDATED_HOME_PHONE_1', 'updated_home_phone_1'),
+          MOBILE_PHONE_1: getField(shareholder, 'MOBILE_PHONE_1', 'mobile_phone_1'),
+          UPDATED_MOBILE_PHONE_1: getField(shareholder, 'UPDATED_MOBILE_PHONE_1', 'updated_mobile_phone_1'),
         })
       }
-      
+
       const result = {
         shareholderCode: getField(shareholder, 'SHAREHOLDER_CODE', 'shareholder_code') || null,
-        idNumber: getField(shareholder, 'ID_NUMBER', 'id_number') || null,
         name: getField(shareholder, 'NAME', 'name') || null,
         uuid: getField(shareholder, 'UUID', 'uuid') || null,
+        idNumberLast4: getField(shareholder, 'ID_LAST_FOUR', 'id_last_four') || null,
         originalAddress: getValue(getField(shareholder, 'ORIGINAL_ADDRESS', 'original_address')),
         updatedAddress: getValue(getField(shareholder, 'UPDATED_ADDRESS', 'updated_address')),
-        originalHomePhone: getValue(getField(shareholder, 'ORIGINAL_HOME_PHONE', 'original_home_phone')),
-        updatedHomePhone: getValue(getField(shareholder, 'UPDATED_HOME_PHONE', 'updated_home_phone')),
-        originalMobilePhone: getValue(getField(shareholder, 'ORIGINAL_MOBILE_PHONE', 'original_mobile_phone')),
-        updatedMobilePhone: getValue(getField(shareholder, 'UPDATED_MOBILE_PHONE', 'updated_mobile_phone')),
+        originalHomePhone: getValue(getField(shareholder, 'HOME_PHONE_1', 'home_phone_1')),
+        updatedHomePhone: getValue(getField(shareholder, 'UPDATED_HOME_PHONE_1', 'updated_home_phone_1')),
+        originalMobilePhone: getValue(getField(shareholder, 'MOBILE_PHONE_1', 'mobile_phone_1')),
+        updatedMobilePhone: getValue(getField(shareholder, 'UPDATED_MOBILE_PHONE_1', 'updated_mobile_phone_1')),
         loginCount: getField(shareholder, 'LOGIN_COUNT', 'login_count') != null ? Number(getField(shareholder, 'LOGIN_COUNT', 'login_count')) : 0,
         updateCount: getField(shareholder, 'UPDATE_COUNT', 'update_count') != null ? Number(getField(shareholder, 'UPDATE_COUNT', 'update_count')) : 0,
       }
-      
+
       // 調試：記錄第一筆資料的轉換結果
       if (index === 0) {
         console.log('第一筆轉換後資料:', result)

@@ -40,3 +40,33 @@ yarn-error.log*
 next-env.d.ts
 
 package.json
+
+# ===== 股東資料匯入（敏感資料保護）=====
+
+# 敏感資料目錄（保留 .gitkeep）
+/data/*
+!/data/.gitkeep
+!/data/input/
+!/data/output/
+!/data/logs/
+/data/input/*
+!/data/input/.gitkeep
+/data/output/*
+!/data/output/.gitkeep
+/data/logs/*
+!/data/logs/.gitkeep
+
+# Excel/CSV（可能含個資）
+*.xlsx
+*.xls
+*.csv
+
+# Python
+/scripts/
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# 日誌
+*.log

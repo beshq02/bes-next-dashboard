@@ -173,11 +173,12 @@ export default function ShareholderUpdatePage() {
           variant="h5"
           component="h1"
           sx={{
-            fontSize: '20px', // 文檔規範：h5 (20px)
-            fontWeight: 500, // 文檔規範：Medium 字重
+            fontSize: 'clamp(10px, 3.5vw, 20px)',
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
           }}
         >
-          中華工程股份有限公司股東資料回報
+          中華工程股份有限公司114年ESG利害關係人問卷
         </Typography>
       </Toolbar>
     </AppBar>

@@ -14,10 +14,10 @@ import db from '@/lib/db'
 import crypto from 'crypto'
 
 /**
- * 從資料庫日誌（testrachel_log）中查找並比對手機驗證碼
+ * 從資料庫日誌（SHAREHOLDER_LOG）中查找並比對手機驗證碼
  * 流程：
- * 1. 先用 qrCodeIdentifier 取得股東資料（上層已完成），取得 idNumber
- * 2. 再用 idNumber + phoneNumber 到 testrachel_log 查詢最近一次的 RANDOM_CODE
+ * 1. 先用 qrCodeIdentifier 取得股東資料（上層已完成），取得 shareholderUuid
+ * 2. 再用 shareholderUuid + phoneNumber 到 SHAREHOLDER_LOG 查詢最近一次的 RANDOM_CODE
  * 3. 檢查是否存在、是否在有效時間內，再與使用者輸入的 4 碼做比對
  *
  * 注意：這裡不再依賴記憶體中的 verificationCodeStore，而是完全以資料庫為準
@@ -25,10 +25,10 @@ import crypto from 'crypto'
  * @param {string} params.qrCodeIdentifier - QR Code 識別碼（用於除錯列印）
  * @param {string} params.phoneNumber - 手機號碼
  * @param {string} params.code - 使用者輸入的驗證碼
- * @param {string} params.idNumber - 股東身分證號（從 testrachel 取得）
+ * @param {string} params.shareholderUuid - 股東 UUID（從 SHAREHOLDER 取得）
  * @returns {Promise<object>} { valid: boolean, shareholderCode: string | null, error: string }
  */
-async function verifyCodeByLog({ qrCodeIdentifier, phoneNumber, code, idNumber }) {
+async function verifyCodeByLog({ qrCodeIdentifier, phoneNumber, code, shareholderUuid }) {
   const inputCodeStr = String(code || '').trim()
 
   if (process.env.NODE_ENV !== 'production') {
@@ -36,36 +36,36 @@ async function verifyCodeByLog({ qrCodeIdentifier, phoneNumber, code, idNumber }
     console.log('[步驟 1] 取得輸入與查詢條件', {
       qrCodeIdentifier,
       phoneNumber,
-      idNumber,
+      shareholderUuid,
       inputCodeRaw: code,
       inputCodeStr,
     })
   }
 
-  // 直接從日誌表中，根據 ID_NUMBER + PHONE_NUMBER_USED 找出最近一次的驗證記錄
+  // 直接從日誌表中，根據 SHAREHOLDER_UUID + PHONE_NUMBER_USED 找出最近一次的驗證記錄
   const query = `
     SELECT TOP 1
       SHAREHOLDER_CODE,
-      ID_NUMBER,
+      SHAREHOLDER_UUID,
       PHONE_NUMBER_USED,
       RANDOM_CODE,
       ACTION_TIME,
       VERIFICATION_TYPE,
       ACTION_TYPE
-    FROM [STAGE].[dbo].[testrachel_log]
-    WHERE ID_NUMBER = @idNumber
+    FROM [STAGE].[dbo].[SHAREHOLDER_LOG]
+    WHERE SHAREHOLDER_UUID = @shareholderUuid
       AND PHONE_NUMBER_USED = @phoneNumber
       AND VERIFICATION_TYPE = 'phone'
       AND ACTION_TYPE = 'verify'
     ORDER BY ACTION_TIME DESC
   `
 
-  const rows = await db.query(query, { idNumber, phoneNumber })
+  const rows = await db.query(query, { shareholderUuid, phoneNumber })
 
   if (!rows || rows.length === 0 || !rows[0].RANDOM_CODE) {
     if (process.env.NODE_ENV !== 'production') {
       console.log('[步驟 2] 找不到對應的驗證碼紀錄（RANDOM_CODE）', {
-        idNumber,
+        shareholderUuid,
         phoneNumber,
         rowCount: rows ? rows.length : 0,
       })
@@ -82,7 +82,7 @@ async function verifyCodeByLog({ qrCodeIdentifier, phoneNumber, code, idNumber }
   if (process.env.NODE_ENV !== 'production') {
     console.log('[步驟 2] 取得最近一次驗證碼紀錄', {
       shareholderCode: record.SHAREHOLDER_CODE,
-      idNumber: record.ID_NUMBER,
+      shareholderUuid: record.SHAREHOLDER_UUID,
       phoneNumberUsed: record.PHONE_NUMBER_USED,
       storedCodeRaw: record.RANDOM_CODE,
       storedCodeStr,
@@ -205,10 +205,10 @@ export async function POST(request) {
     if (uuidPattern.test(qrCodeIdentifier)) {
       // UUID 格式：直接根據 UUID 查詢
       const qrCodeQuery = `
-        SELECT SHAREHOLDER_CODE, ID_NUMBER, NAME, ORIGINAL_ADDRESS, 
-               COALESCE(UPDATED_MOBILE_PHONE, ORIGINAL_MOBILE_PHONE, '') AS PHONE,
-               UPDATED_MOBILE_PHONE, ORIGINAL_MOBILE_PHONE
-        FROM [STAGE].[dbo].[testrachel]
+        SELECT SHAREHOLDER_CODE, UUID, NAME, ORIGINAL_ADDRESS,
+               COALESCE(UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1, '') AS PHONE,
+               UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1
+        FROM [STAGE].[dbo].[SHAREHOLDER]
         WHERE UUID = @uuid
       `
 
@@ -223,12 +223,12 @@ export async function POST(request) {
 
       qrCodeShareholder = {
         shareholder_code: qrCodeShareholders[0].SHAREHOLDER_CODE,
-        id_number: qrCodeShareholders[0].ID_NUMBER,
+        uuid: qrCodeShareholders[0].UUID,
         name: qrCodeShareholders[0].NAME,
         address: qrCodeShareholders[0].ORIGINAL_ADDRESS,
         phone: qrCodeShareholders[0].PHONE,
-        updated_mobile_phone: qrCodeShareholders[0].UPDATED_MOBILE_PHONE,
-        original_mobile_phone: qrCodeShareholders[0].ORIGINAL_MOBILE_PHONE,
+        updated_mobile_phone: qrCodeShareholders[0].UPDATED_MOBILE_PHONE_1,
+        original_mobile_phone: qrCodeShareholders[0].MOBILE_PHONE_1,
       }
     } else {
       return NextResponse.json(
@@ -248,7 +248,7 @@ export async function POST(request) {
 
     // 準備記錄 log 所需的資訊
     const shareholderCode = qrCodeShareholder.shareholder_code
-    const idNumber = qrCodeShareholder.id_number
+    const shareholderUuid = qrCodeShareholder.uuid
 
     // 輔助函數：更新或插入驗證記錄（成功或失敗都使用）
     // 注意：log 記錄已經在 send-verification-code 時建立（ACTION_TYPE = 'verify'），
@@ -259,7 +259,7 @@ export async function POST(request) {
         if (verificationType === 'phone' && isSuccess) {
           // 手機驗證成功時，更新 PHONE_VERIFICATION_TIME
           const updateLogQuery = `
-            UPDATE [STAGE].[dbo].[testrachel_log]
+            UPDATE [STAGE].[dbo].[SHAREHOLDER_LOG]
             SET PHONE_VERIFICATION_TIME = @phoneVerificationTime
             WHERE LOG_ID = @scanLogId AND SHAREHOLDER_CODE = @shareholderCode
           `
@@ -274,15 +274,15 @@ export async function POST(request) {
         // 如果沒有 scanLogId，建立新記錄（相容舊流程，但這種情況理論上不應該發生）
         const logId = crypto.randomUUID()
         const insertLogQuery = `
-          INSERT INTO [STAGE].[dbo].[testrachel_log]
-          (LOG_ID, SHAREHOLDER_CODE, ID_NUMBER, ACTION_TYPE, ACTION_TIME, VERIFICATION_TYPE, PHONE_NUMBER_USED, PHONE_VERIFICATION_TIME, RANDOM_CODE, HAS_UPDATED_DATA)
+          INSERT INTO [STAGE].[dbo].[SHAREHOLDER_LOG]
+          (LOG_ID, SHAREHOLDER_UUID, SHAREHOLDER_CODE, ACTION_TYPE, ACTION_TIME, VERIFICATION_TYPE, PHONE_NUMBER_USED, PHONE_VERIFICATION_TIME, RANDOM_CODE, HAS_UPDATED_DATA)
           VALUES
-          (@logId, @shareholderCode, @idNumber, 'verify', GETDATE(), @verificationType, @phoneNumberUsed, @phoneVerificationTime, @randomCode, 0)
+          (@logId, @shareholderUuid, @shareholderCode, 'verify', GETDATE(), @verificationType, @phoneNumberUsed, @phoneVerificationTime, @randomCode, 0)
         `
         await db.query(insertLogQuery, {
           logId,
+          shareholderUuid,
           shareholderCode,
-          idNumber,
           verificationType: verificationType,
           phoneNumberUsed: verificationInfo.phoneNumberUsed || null,
           phoneVerificationTime: isSuccess ? verificationInfo.phoneVerificationTime : null,
@@ -315,14 +315,14 @@ export async function POST(request) {
         })
       }
 
-      // 使用 testrachel_log 中的 RANDOM_CODE 進行驗證：
-      // 1. 先用 qrCodeIdentifier 從 testrachel 取得 id_number（上方已完成）
-      // 2. 再用 id_number + phoneNumber 到 testrachel_log 找出最近一次的 RANDOM_CODE
+      // 使用 SHAREHOLDER_LOG 中的 RANDOM_CODE 進行驗證：
+      // 1. 先用 qrCodeIdentifier 從 SHAREHOLDER 取得 uuid（上方已完成）
+      // 2. 再用 uuid + phoneNumber 到 SHAREHOLDER_LOG 找出最近一次的 RANDOM_CODE
       const codeResult = await verifyCodeByLog({
         qrCodeIdentifier,
         phoneNumber,
         code: codeToVerify,
-        idNumber,
+        shareholderUuid,
       })
 
       if (!codeResult.valid) {
@@ -354,10 +354,10 @@ export async function POST(request) {
       // 身分證末四碼驗證
       // 查詢身分證末四碼對應的股東（可能重複，需再與 QR Code 檢查碼比對）
       const idLastFourQuery = `
-        SELECT SHAREHOLDER_CODE, ID_NUMBER, NAME, ORIGINAL_ADDRESS, 
-               COALESCE(UPDATED_MOBILE_PHONE, ORIGINAL_MOBILE_PHONE, '') AS PHONE
-        FROM [STAGE].[dbo].[testrachel]
-        WHERE RIGHT(ID_NUMBER, 4) = @idLastFour
+        SELECT SHAREHOLDER_CODE, UUID, NAME, ORIGINAL_ADDRESS,
+               COALESCE(UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1, '') AS PHONE
+        FROM [STAGE].[dbo].[SHAREHOLDER]
+        WHERE ID_LAST_FOUR = @idLastFour
       `
 
       const idLastFourShareholders = await db.query(idLastFourQuery, { idLastFour })
@@ -375,7 +375,7 @@ export async function POST(request) {
 
       const idLastFourShareholder = {
         shareholder_code: idLastFourShareholders[0].SHAREHOLDER_CODE,
-        id_number: idLastFourShareholders[0].ID_NUMBER,
+        uuid: idLastFourShareholders[0].UUID,
         name: idLastFourShareholders[0].NAME,
         address: idLastFourShareholders[0].ORIGINAL_ADDRESS,
         phone: idLastFourShareholders[0].PHONE,
@@ -396,7 +396,7 @@ export async function POST(request) {
       // 驗證成功，更新 log（將 visit 更新為 verify）
       if (scanLogId) {
         const updateLogQuery = `
-          UPDATE [STAGE].[dbo].[testrachel_log]
+          UPDATE [STAGE].[dbo].[SHAREHOLDER_LOG]
           SET ACTION_TYPE = 'verify',
               ACTION_TIME = GETDATE(),
               VERIFICATION_TYPE = 'id'
@@ -429,7 +429,7 @@ export async function POST(request) {
 
     // 驗證成功，更新登入次數
     const updateLoginCountQuery = `
-      UPDATE [STAGE].[dbo].[testrachel]
+      UPDATE [STAGE].[dbo].[SHAREHOLDER]
       SET LOGIN_COUNT = LOGIN_COUNT + 1,
           UPDATED_AT = GETDATE()
       WHERE SHAREHOLDER_CODE = @shareholderCode
@@ -443,7 +443,7 @@ export async function POST(request) {
     // 驗證成功，返回股東資料（包含 logId 供後續更新日誌使用）
     const responseData = {
       shareholderCode: qrCodeShareholder.shareholder_code,
-      idNumber: qrCodeShareholder.id_number,
+      uuid: qrCodeShareholder.uuid,
       name: qrCodeShareholder.name,
       address: qrCodeShareholder.address,
       phone: qrCodeShareholder.phone,
