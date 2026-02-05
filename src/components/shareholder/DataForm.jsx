@@ -1,112 +1,262 @@
 /**
  * 資料修改表單組件
- * 使用 MUI TextField、shadcn/ui Input OTP、Button 元件
+ * 使用 MUI TextField、Button 元件
  * 遵循 Material Design 3.0 和文檔規範
  */
 
 'use client'
 
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { Box, TextField, Button, Card, CardContent, Typography, Stack } from '@mui/material'
-import { validateAddress, validatePhone } from '@/lib/validation'
+
+import {
+  Box,
+  Card,
+  Stack,
+  Button,
+  Divider,
+  TextField,
+  Typography,
+  CardContent,
+} from '@mui/material'
 
 export default function DataForm({ shareholderData, qrCode, logId }) {
-  const [updatedAddress, setUpdatedAddress] = useState('')
-  const [updatedHomePhone, setUpdatedHomePhone] = useState('')
-  const [updatedMobilePhone, setUpdatedMobilePhone] = useState('')
+  // 地址欄位
+  const [city, setCity] = useState('')
+  const [district, setDistrict] = useState('')
+  const [address, setAddress] = useState('')
+  const [originalCity, setOriginalCity] = useState('')
+  const [originalDistrict, setOriginalDistrict] = useState('')
   const [originalAddress, setOriginalAddress] = useState('')
-  const [originalHomePhone, setOriginalHomePhone] = useState('')
-  const [originalMobilePhone, setOriginalMobilePhone] = useState('')
-  // 記錄表單初始化時的值（用於判斷本次是否有變更）
-  const [initialAddress, setInitialAddress] = useState('')
-  const [initialHomePhone, setInitialHomePhone] = useState('')
-  const [initialMobilePhone, setInitialMobilePhone] = useState('')
-  const [addressError, setAddressError] = useState(null)
-  const [homePhoneError, setHomePhoneError] = useState(null)
-  const [mobilePhoneError, setMobilePhoneError] = useState(null)
+
+  // 電話欄位
+  const [homePhone1, setHomePhone1] = useState('')
+  const [homePhone2, setHomePhone2] = useState('')
+  const [mobilePhone1, setMobilePhone1] = useState('')
+  const [mobilePhone2, setMobilePhone2] = useState('')
+  const [originalHomePhone1, setOriginalHomePhone1] = useState('')
+  const [originalHomePhone2, setOriginalHomePhone2] = useState('')
+  const [originalMobilePhone1, setOriginalMobilePhone1] = useState('')
+  const [originalMobilePhone2, setOriginalMobilePhone2] = useState('')
+
+  // 錯誤狀態
+  const [cityError, setCityError] = useState('')
+  const [districtError, setDistrictError] = useState('')
+  const [addressError, setAddressError] = useState('')
+  const [homePhone1Error, setHomePhone1Error] = useState('')
+  const [mobilePhone1Error, setMobilePhone1Error] = useState('')
+
+  // 是否已觸碰欄位（用於顯示即時驗證錯誤）
+  const [touchedFields, setTouchedFields] = useState({})
+
   const router = useRouter()
+
+  // 輔助函數：判斷值是否有效
+  const hasValue = val => val !== null && val !== undefined && val !== ''
 
   // 初始化表單資料
   useEffect(() => {
     if (shareholderData) {
-      // 原資料（用於比對是否有變更，不可編輯）
+      // 設定原始值
+      setOriginalCity(shareholderData.originalCity || '')
+      setOriginalDistrict(shareholderData.originalDistrict || '')
       setOriginalAddress(shareholderData.originalAddress || '')
-      setOriginalHomePhone(shareholderData.originalHomePhone || '')
-      setOriginalMobilePhone(shareholderData.originalMobilePhone || '')
-      // 更新資料（可編輯，預設：有更新值顯示更新值，沒有就顯示原值）
-      // 注意：需要檢查 updatedAddress 是否為 null/undefined，如果是則使用 originalAddress
-      const hasUpdatedAddress =
-        shareholderData.updatedAddress !== null &&
-        shareholderData.updatedAddress !== undefined &&
-        shareholderData.updatedAddress !== ''
-      const hasUpdatedHomePhone =
-        shareholderData.updatedHomePhone !== null &&
-        shareholderData.updatedHomePhone !== undefined &&
-        shareholderData.updatedHomePhone !== ''
-      const hasUpdatedMobilePhone =
-        shareholderData.updatedMobilePhone !== null &&
-        shareholderData.updatedMobilePhone !== undefined &&
-        shareholderData.updatedMobilePhone !== ''
+      setOriginalHomePhone1(shareholderData.originalHomePhone1 || '')
+      setOriginalHomePhone2(shareholderData.originalHomePhone2 || '')
+      setOriginalMobilePhone1(shareholderData.originalMobilePhone1 || '')
+      setOriginalMobilePhone2(shareholderData.originalMobilePhone2 || '')
 
-      // 計算要顯示的初始值（有更新值顯示更新值，沒有就顯示原值）
-      const initialAddressValue = hasUpdatedAddress
-        ? shareholderData.updatedAddress
-        : shareholderData.originalAddress || ''
-      const initialHomePhoneValue = hasUpdatedHomePhone
-        ? shareholderData.updatedHomePhone
-        : shareholderData.originalHomePhone || ''
-      const initialMobilePhoneValue = hasUpdatedMobilePhone
-        ? shareholderData.updatedMobilePhone
-        : shareholderData.originalMobilePhone || ''
-
-      // 記錄表單初始化時的值（用於判斷本次是否有變更）
-      setInitialAddress(initialAddressValue)
-      setInitialHomePhone(initialHomePhoneValue)
-      setInitialMobilePhone(initialMobilePhoneValue)
-
-      // 設定表單顯示值
-      setUpdatedAddress(initialAddressValue)
-      setUpdatedHomePhone(initialHomePhoneValue)
-      setUpdatedMobilePhone(initialMobilePhoneValue)
+      // 計算初始顯示值（有更新值顯示更新值，沒有就顯示原值）
+      setCity(
+        hasValue(shareholderData.updatedCity)
+          ? shareholderData.updatedCity
+          : shareholderData.originalCity || ''
+      )
+      setDistrict(
+        hasValue(shareholderData.updatedDistrict)
+          ? shareholderData.updatedDistrict
+          : shareholderData.originalDistrict || ''
+      )
+      setAddress(
+        hasValue(shareholderData.updatedAddress)
+          ? shareholderData.updatedAddress
+          : shareholderData.originalAddress || ''
+      )
+      setHomePhone1(
+        hasValue(shareholderData.updatedHomePhone1)
+          ? shareholderData.updatedHomePhone1
+          : shareholderData.originalHomePhone1 || ''
+      )
+      setHomePhone2(
+        hasValue(shareholderData.updatedHomePhone2)
+          ? shareholderData.updatedHomePhone2
+          : shareholderData.originalHomePhone2 || ''
+      )
+      setMobilePhone1(
+        hasValue(shareholderData.updatedMobilePhone1)
+          ? shareholderData.updatedMobilePhone1
+          : shareholderData.originalMobilePhone1 || ''
+      )
+      setMobilePhone2(
+        hasValue(shareholderData.updatedMobilePhone2)
+          ? shareholderData.updatedMobilePhone2
+          : shareholderData.originalMobilePhone2 || ''
+      )
     }
   }, [shareholderData])
 
-  // 處理更新地址變更
+  // 即時驗證函數
+  const validateField = (fieldName, value) => {
+    const trimmedValue = (value || '').trim()
+
+    switch (fieldName) {
+      case 'city':
+        if (!trimmedValue) {
+          setCityError('請輸入縣市')
+          return false
+        }
+        setCityError('')
+        return true
+
+      case 'district':
+        if (!trimmedValue) {
+          setDistrictError('請輸入鄉鎮市區')
+          return false
+        }
+        setDistrictError('')
+        return true
+
+      case 'address':
+        if (!trimmedValue) {
+          setAddressError('請輸入地址')
+          return false
+        }
+        setAddressError('')
+        return true
+
+      case 'homePhone1':
+        if (!trimmedValue) {
+          setHomePhone1Error('請輸入住家電話')
+          return false
+        }
+        setHomePhone1Error('')
+        return true
+
+      case 'mobilePhone1':
+        if (!trimmedValue) {
+          setMobilePhone1Error('請輸入手機號碼')
+          return false
+        }
+        if (!/^09\d{8}$/.test(trimmedValue)) {
+          setMobilePhone1Error('手機號碼格式錯誤')
+          return false
+        }
+        setMobilePhone1Error('')
+        return true
+
+      default:
+        return true
+    }
+  }
+
+  // 處理欄位失去焦點
+  const handleBlur = fieldName => {
+    setTouchedFields(prev => ({ ...prev, [fieldName]: true }))
+    switch (fieldName) {
+      case 'city':
+        validateField('city', city)
+        break
+      case 'district':
+        validateField('district', district)
+        break
+      case 'address':
+        validateField('address', address)
+        break
+      case 'homePhone1':
+        validateField('homePhone1', homePhone1)
+        break
+      case 'mobilePhone1':
+        validateField('mobilePhone1', mobilePhone1)
+        break
+    }
+  }
+
+  // 處理欄位變更
+  const handleCityChange = e => {
+    const value = e.target.value
+    setCity(value)
+    if (touchedFields.city) validateField('city', value)
+  }
+
+  const handleDistrictChange = e => {
+    const value = e.target.value
+    setDistrict(value)
+    if (touchedFields.district) validateField('district', value)
+  }
+
   const handleAddressChange = e => {
     const value = e.target.value
-    setUpdatedAddress(value)
-    setAddressError(null)
+    setAddress(value)
+    if (touchedFields.address) validateField('address', value)
   }
 
-  // 處理更新住家電話變更
-  const handleHomePhoneChange = e => {
-    const value = e.target.value
-    // 只允許數字和連字號
-    const numericValue = value.replace(/[^0-9-]/g, '')
-    setUpdatedHomePhone(numericValue)
-    setHomePhoneError(null)
+  const handleHomePhone1Change = e => {
+    const value = e.target.value.replace(/[^0-9-]/g, '')
+    setHomePhone1(value)
+    if (touchedFields.homePhone1) validateField('homePhone1', value)
   }
 
-  // 處理更新手機電話變更
-  const handleMobilePhoneChange = e => {
-    const value = e.target.value
-    // 只允許數字
-    const numericValue = value.replace(/[^0-9]/g, '')
-    setUpdatedMobilePhone(numericValue)
-    setMobilePhoneError(null)
+  const handleHomePhone2Change = e => {
+    const value = e.target.value.replace(/[^0-9-]/g, '')
+    setHomePhone2(value)
   }
 
-  // 處理表單提交（簡化流程：直接跳轉並記錄修改次數）
+  const handleMobilePhone1Change = e => {
+    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
+    setMobilePhone1(value)
+    if (touchedFields.mobilePhone1) validateField('mobilePhone1', value)
+  }
+
+  const handleMobilePhone2Change = e => {
+    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
+    setMobilePhone2(value)
+  }
+
+  // 驗證所有必填欄位
+  const validateAllRequired = () => {
+    const isValidCity = validateField('city', city)
+    const isValidDistrict = validateField('district', district)
+    const isValidAddress = validateField('address', address)
+    const isValidHomePhone1 = validateField('homePhone1', homePhone1)
+    const isValidMobilePhone1 = validateField('mobilePhone1', mobilePhone1)
+
+    // 標記所有欄位為已觸碰
+    setTouchedFields({
+      city: true,
+      district: true,
+      address: true,
+      homePhone1: true,
+      mobilePhone1: true,
+    })
+
+    return (
+      isValidCity && isValidDistrict && isValidAddress && isValidHomePhone1 && isValidMobilePhone1
+    )
+  }
+
+  // 處理表單提交
   const handleSubmit = async e => {
     e.preventDefault()
 
-    // 使用 shareholderCode（股東代號，6位數字）
+    // 驗證所有必填欄位
+    if (!validateAllRequired()) {
+      return
+    }
+
     const shareholderCode = shareholderData.shareholderCode
 
     if (!shareholderCode) {
-      // 即使沒有股東代號也跳轉，但記錄錯誤
       console.error('無法取得股東代號')
       if (qrCode) {
         router.push(`/shareholder/update/${qrCode}/thank-you`)
@@ -116,27 +266,32 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
       return
     }
 
-    // 準備更新資料（包含所有欄位，用於記錄修改次數和日誌）
+    // 準備更新資料
     const updateData = {
-      updatedAddress: updatedAddress.trim() || null,
-      updatedHomePhone: updatedHomePhone.trim() || null,
-      updatedMobilePhone: updatedMobilePhone.trim() || null,
-      ...(logId && { logId }), // 如果有 logId，加入更新資料中
+      updatedCity: city.trim() || null,
+      updatedDistrict: district.trim() || null,
+      updatedAddress: address.trim() || null,
+      updatedHomePhone1: homePhone1.trim() || null,
+      updatedHomePhone2: homePhone2.trim() || null,
+      updatedMobilePhone1: mobilePhone1.trim() || null,
+      updatedMobilePhone2: mobilePhone2.trim() || null,
+      ...(logId && { logId }),
     }
 
-    // 異步調用 API 記錄修改次數（不等待回應，直接跳轉）
-    fetch(`/api/shareholder/data/${shareholderCode}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData),
-    }).catch(err => {
-      // 靜默處理錯誤，不影響跳轉
-      console.error('記錄修改次數錯誤:', err)
-    })
+    try {
+      // 等待 API 完成後再跳轉
+      await fetch(`/api/shareholder/data/${shareholderCode}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      })
+    } catch (err) {
+      console.error('更新股東資料錯誤:', err)
+    }
 
-    // 直接跳轉到感謝頁面
+    // API 完成後跳轉到感謝頁面
     if (qrCode) {
       router.push(`/shareholder/update/${qrCode}/thank-you`)
     } else {
@@ -144,184 +299,318 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
     }
   }
 
-  // 遮罩身分證字號（只顯示英文字母+後面四碼，中間用'*'遮住）
+  // 遮罩身分證字號
   const maskIdNumber = idNumber => {
     if (!idNumber || idNumber.length < 5) return idNumber
-    // 身分證字號格式：1個英文字母 + 9個數字
-    // 顯示：英文字母 + ****** + 後四碼
     const firstChar = idNumber.charAt(0)
     const lastFour = idNumber.slice(-4)
     return `${firstChar}******${lastFour}`
   }
 
-  // 取得要顯示的值（初始化時已處理：有更新值顯示更新值，沒有就顯示原值）
-  // 直接返回狀態值即可，因為初始化時已經正確設定
-  const getDisplayAddress = () => updatedAddress
-  const getDisplayHomePhone = () => updatedHomePhone
-  const getDisplayMobilePhone = () => updatedMobilePhone
+  // 共用的輸入框樣式
+  const textFieldSx = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '8px',
+      backgroundColor: '#fff',
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#1976d2',
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#1976d2',
+        borderWidth: '2px',
+      },
+      '&.Mui-error .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#d32f2f',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      fontSize: '14px',
+      color: '#666',
+      '&.Mui-focused': {
+        color: '#1976d2',
+      },
+      '&.Mui-error': {
+        color: '#d32f2f',
+      },
+    },
+    '& .MuiFormHelperText-root': {
+      fontSize: '12px',
+      marginLeft: 0,
+      marginTop: '4px',
+      '&.Mui-error': {
+        color: '#d32f2f',
+        fontWeight: 500,
+      },
+    },
+  }
+
+  // 顯示用姓名：去除前後空白、合併連續空白，空值不顯示
+  const displayName = (shareholderData?.name || '').trim().replace(/\s+/g, ' ') || null
 
   return (
-    <Box sx={{ maxWidth: 800, margin: '0 auto', marginTop: 4 }}>
-      {/* 歡迎詞區塊 - 顯示在表單前面，獨立於Card，無背景，寬度較小並居中 */}
-      <Box
-        sx={{
-          marginBottom: 3,
-          maxWidth: 600,
-          margin: '0 auto 24px auto',
-        }}
-      >
+    <Box sx={{ maxWidth: 600, margin: '0 auto', marginTop: 4, px: 2 }}>
+      {/* 歡迎詞區塊 */}
+      <Box sx={{ marginBottom: 3 }}>
         <Typography
+          component="div"
           variant="body1"
           sx={{
-            fontSize: '18px',
-            fontWeight: 500,
+            fontSize: '16px',
+            fontWeight: 400,
             lineHeight: 1.8,
             color: 'text.primary',
-            display: 'block',
-            marginTop: 0,
-            marginBottom: 0,
-            marginLeft: '30px',
-            marginRight: '30px',
           }}
         >
-          股東 <strong>{shareholderData?.name || ''}</strong> 您好，身分證字號{' '}
-          <strong>{maskIdNumber(shareholderData?.idNumber || '')}</strong>
-          。為確保公司能及時與您聯繫，並正確寄送股東會相關資料，請協助確認並更新您的聯絡地址及電話號碼。
+          <p style={{ margin: '0 0 0.75em 0' }}>
+            {displayName ? <strong style={{ display: 'inline' }}>{displayName}</strong> : null}
+            {displayName ? ' ' : ''}股東您好，
+          </p>
+          <p style={{ margin: '0 0 0.75em 0' }}>
+            感謝您長期以來對中華工程的信任與支持！為督促我們企業能更正向的發展，請您協助
+            <strong>填寫問卷</strong>，我們後續將寄發<strong>7-11 100元禮券</strong>
+            以為感謝！
+          </p>
+          <p style={{ margin: 0 }}>
+            為確保禮券能順利寄送，請在填寫問券前確認以下資料並更新您的聯絡地址及電話號碼。
+          </p>
         </Typography>
       </Box>
 
-      <Card>
-        <CardContent>
-          {/* 表單標題 */}
-          <Typography
-            variant="h6"
-            component="h2"
-            gutterBottom
-            sx={{
-              fontSize: '18px',
-              fontWeight: 600,
-              marginBottom: 2,
-              color: 'text.primary',
-            }}
-          >
-            聯絡資料
-          </Typography>
-
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: '12px',
+          border: '1px solid #e0e0e0',
+          overflow: 'visible',
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
           <form onSubmit={handleSubmit}>
-            <Stack spacing={2}>
-              {' '}
-              {/* 文檔規範：表單欄位間距 md (16px) */}
+            {/* 地址區塊 */}
+            <Box sx={{ mb: 4 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#333',
+                  mb: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                聯絡地址
+              </Typography>
+
+              {/* 縣市和鄉鎮市區 - 並排 */}
+              <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+                <TextField
+                  label="縣市"
+                  value={city}
+                  onChange={handleCityChange}
+                  onBlur={() => handleBlur('city')}
+                  error={!!cityError && touchedFields.city}
+                  helperText={touchedFields.city && cityError ? cityError : ''}
+                  required
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={textFieldSx}
+                  inputProps={{
+                    'aria-label': '縣市',
+                    'aria-required': 'true',
+                  }}
+                />
+                <TextField
+                  label="鄉鎮市區"
+                  value={district}
+                  onChange={handleDistrictChange}
+                  onBlur={() => handleBlur('district')}
+                  error={!!districtError && touchedFields.district}
+                  helperText={touchedFields.district && districtError ? districtError : ''}
+                  required
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={textFieldSx}
+                  inputProps={{
+                    'aria-label': '鄉鎮市區',
+                    'aria-required': 'true',
+                  }}
+                />
+              </Stack>
+
+              {/* 詳細地址 */}
               <TextField
-                label="地址"
-                value={getDisplayAddress()}
+                label="詳細地址"
+                value={address}
                 onChange={handleAddressChange}
-                error={!!addressError}
-                helperText={addressError || '請輸入地址'}
+                onBlur={() => handleBlur('address')}
+                error={!!addressError && touchedFields.address}
+                helperText={touchedFields.address && addressError ? addressError : ''}
                 required
                 fullWidth
                 variant="outlined"
-                multiline
-                rows={3}
-                sx={{
-                  '& .MuiInputBase-root': {
-                    minHeight: '56px',
-                  },
-                  '& .MuiInputLabel-root': {
-                    fontSize: '14px',
-                  },
-                  '& .MuiFormHelperText-root': {
-                    fontSize: '12px',
-                  },
-                }}
+                size="small"
+                sx={textFieldSx}
                 inputProps={{
-                  'aria-label': '地址輸入欄位',
+                  'aria-label': '詳細地址',
                   'aria-required': 'true',
-                  'aria-invalid': !!addressError,
                 }}
               />
-              <TextField
-                label="住家電話"
-                type="tel"
-                value={getDisplayHomePhone()}
-                onChange={handleHomePhoneChange}
-                error={!!homePhoneError}
-                helperText={homePhoneError || '請輸入住家電話（可選）'}
-                fullWidth
-                variant="outlined"
+            </Box>
+
+            <Divider sx={{ my: 3 }} />
+
+            {/* 住家電話區塊 */}
+            <Box sx={{ mb: 4 }}>
+              <Typography
+                variant="subtitle2"
                 sx={{
-                  '& .MuiInputBase-root': {
-                    height: '56px',
-                  },
-                  '& .MuiInputLabel-root': {
-                    fontSize: '14px',
-                  },
-                  '& .MuiFormHelperText-root': {
-                    fontSize: '12px',
-                  },
-                }}
-                inputProps={{
-                  maxLength: 20,
-                  inputMode: 'tel',
-                  'aria-label': '住家電話輸入欄位',
-                  'aria-invalid': !!homePhoneError,
-                }}
-              />
-              <TextField
-                label="手機電話"
-                type="tel"
-                value={getDisplayMobilePhone()}
-                onChange={handleMobilePhoneChange}
-                error={!!mobilePhoneError}
-                helperText={mobilePhoneError || '請輸入手機電話（可選）'}
-                fullWidth
-                variant="outlined"
-                sx={{
-                  '& .MuiInputBase-root': {
-                    height: '56px',
-                  },
-                  '& .MuiInputLabel-root': {
-                    fontSize: '14px',
-                  },
-                  '& .MuiFormHelperText-root': {
-                    fontSize: '12px',
-                  },
-                }}
-                inputProps={{
-                  maxLength: 10,
-                  inputMode: 'numeric',
-                  pattern: '[0-9]{10}',
-                  'aria-label': '手機電話輸入欄位',
-                  'aria-invalid': !!mobilePhoneError,
-                }}
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                size="large" // 文檔規範：Large (42px)
-                fullWidth
-                aria-label="資料確認"
-                sx={{
-                  fontSize: '14px', // 文檔規範：按鈕文字 14px
-                  fontWeight: 500, // 文檔規範：Medium 字重
-                  marginTop: 2,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#333',
+                  mb: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
                 }}
               >
-                資料確認
-              </Button>
-            </Stack>
+                住家電話
+              </Typography>
+
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="電話 1"
+                  type="tel"
+                  value={homePhone1}
+                  onChange={handleHomePhone1Change}
+                  onBlur={() => handleBlur('homePhone1')}
+                  error={!!homePhone1Error && touchedFields.homePhone1}
+                  helperText={touchedFields.homePhone1 && homePhone1Error ? homePhone1Error : ''}
+                  required
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={textFieldSx}
+                  inputProps={{
+                    maxLength: 20,
+                    inputMode: 'tel',
+                    'aria-label': '住家電話1',
+                    'aria-required': 'true',
+                  }}
+                />
+                <TextField
+                  label="電話 2（選填）"
+                  type="tel"
+                  value={homePhone2}
+                  onChange={handleHomePhone2Change}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={textFieldSx}
+                  inputProps={{
+                    maxLength: 20,
+                    inputMode: 'tel',
+                    'aria-label': '住家電話2',
+                  }}
+                />
+              </Stack>
+            </Box>
+
+            <Divider sx={{ my: 3 }} />
+
+            {/* 手機號碼區塊 */}
+            <Box sx={{ mb: 4 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#333',
+                  mb: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                手機號碼
+              </Typography>
+
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="手機 1"
+                  type="tel"
+                  value={mobilePhone1}
+                  onChange={handleMobilePhone1Change}
+                  onBlur={() => handleBlur('mobilePhone1')}
+                  error={!!mobilePhone1Error && touchedFields.mobilePhone1}
+                  helperText={
+                    touchedFields.mobilePhone1 && mobilePhone1Error ? mobilePhone1Error : ''
+                  }
+                  required
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={textFieldSx}
+                  inputProps={{
+                    maxLength: 10,
+                    inputMode: 'numeric',
+                    pattern: '[0-9]{10}',
+                    'aria-label': '手機號碼1',
+                    'aria-required': 'true',
+                  }}
+                />
+                <TextField
+                  label="手機 2（選填）"
+                  type="tel"
+                  value={mobilePhone2}
+                  onChange={handleMobilePhone2Change}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={textFieldSx}
+                  inputProps={{
+                    maxLength: 10,
+                    inputMode: 'numeric',
+                    pattern: '[0-9]{10}',
+                    'aria-label': '手機號碼2',
+                  }}
+                />
+              </Stack>
+            </Box>
+
+            {/* 提交按鈕 */}
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              fullWidth
+              sx={{
+                mt: 2,
+                py: 1.5,
+                fontSize: '16px',
+                fontWeight: 600,
+                borderRadius: '8px',
+                textTransform: 'none',
+                boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)',
+                '&:hover': {
+                  boxShadow: '0 4px 12px rgba(25, 118, 210, 0.4)',
+                },
+              }}
+            >
+              確認送出
+            </Button>
           </form>
         </CardContent>
       </Card>
 
-      {/* 謝詞及資料申明 - 顯示在表單後，無背景，文字靠左，logo置中，寬度較小並居中 */}
+      {/* 謝詞及資料申明 */}
       <Box
         sx={{
           marginTop: 4,
-          maxWidth: 600,
-          margin: '32px auto 0 auto',
           display: 'flex',
           flexDirection: 'column',
           gap: 2,
+          pb: 4,
         }}
       >
         <Typography
@@ -330,15 +619,13 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
             fontSize: '12px',
             lineHeight: 1.6,
             color: 'text.secondary',
-            textAlign: 'left',
-            paddingLeft: '30px',
-            paddingRight: '30px',
+            textAlign: 'center',
           }}
         >
           感謝您的配合與協助。本系統所收集之資料僅供公司內部使用，我們將妥善保管您的個人資料，並遵循相關隱私保護法規。
         </Typography>
 
-        {/* Logo 及公司名稱 - 置中對齊 */}
+        {/* Logo 及公司名稱 */}
         <Box
           sx={{
             display: 'flex',
@@ -350,16 +637,16 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
           <Image
             src="/logo.png"
             alt="中華工程股份有限公司 Logo"
-            width={32}
-            height={32}
+            width={28}
+            height={28}
             style={{ objectFit: 'contain' }}
           />
           <Typography
             variant="body2"
             sx={{
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: 500,
-              color: 'text.primary',
+              color: 'text.secondary',
             }}
           >
             中華工程股份有限公司

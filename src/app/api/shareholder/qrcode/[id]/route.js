@@ -19,7 +19,7 @@ import { getBaseUrlFromRequest } from '@/lib/url'
  */
 export async function GET(request, { params }) {
   try {
-    const { id } = params
+    const { id } = await params
     
     if (!id) {
       return NextResponse.json(
@@ -38,8 +38,8 @@ export async function GET(request, { params }) {
     if (isSixDigit) {
       // 輸入6位股東代號，根據 SHAREHOLDER_CODE 查詢 UUID
       const query = `
-        SELECT ID_NUMBER, NAME, SHAREHOLDER_CODE, UUID
-        FROM [STAGE].[dbo].[testrachel]
+        SELECT NAME, SHAREHOLDER_CODE, UUID
+        FROM [STAGE].[dbo].[SHAREHOLDER]
         WHERE SHAREHOLDER_CODE = @shareholderCode
       `
       
@@ -66,8 +66,8 @@ export async function GET(request, { params }) {
     } else if (isUUID) {
       // 輸入 UUID，根據 UUID 查詢
       const query = `
-        SELECT ID_NUMBER, NAME, SHAREHOLDER_CODE, UUID
-        FROM [STAGE].[dbo].[testrachel]
+        SELECT NAME, SHAREHOLDER_CODE, UUID
+        FROM [STAGE].[dbo].[SHAREHOLDER]
         WHERE UUID = @uuid
       `
       

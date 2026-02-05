@@ -7,8 +7,8 @@ const SMS_API_URL = 'https://new.e8d.tw/API21/HTTP/SendSMS.ashx'
 const SMS_TIMEOUT_MS = 10000 // 簡訊服務最長等待時間 10 秒
 
 // 帳號密碼（應該從環境變數讀取）
-const UID = process.env.SMS_UID || 'besTE'
-const PWD = process.env.SMS_PWD || 'besTE168'
+const UID = process.env.SMS_UID
+const PWD = process.env.SMS_PWD
 
 /**
  * 發送簡訊

@@ -725,7 +725,7 @@ export default function AuthDialog({
               display: 'flex',
               justifyContent: 'center',
               animation: shake ? `${shakeKeyframes} 0.4s` : 'none',
-              px: { xs: 2, sm: 4 },
+              px: { xs: 3, sm: 4 },
             }}
           >
             <InputOTP
@@ -734,35 +734,13 @@ export default function AuthDialog({
               onChange={handleVerificationCodeChange}
               disabled={loading || sendingCode}
               inputMode="numeric"
-              sx={{
-                width: '100%',
-                display: 'flex',
-                justifyContent: 'center',
-                '& > div': {
-                  width: '100%',
-                  display: 'flex',
-                  gap: 2,
-                  justifyContent: 'center',
-                },
-                '& [data-slot]': {
-                  flex: 1,
-                  minWidth: 80,
-                  maxWidth: 120,
-                  height: 80,
-                  fontSize: '36px',
-                  fontWeight: 600,
-                },
-                '& [data-slot][data-active=true]': {
-                  borderColor: 'primary.main',
-                  borderWidth: 2,
-                },
-              }}
+              containerClassName="w-full justify-center gap-2 sm:gap-3"
             >
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-                <InputOTPSlot index={2} />
-                <InputOTPSlot index={3} />
+              <InputOTPGroup className="gap-2 sm:gap-3">
+                <InputOTPSlot index={0} size="lg" />
+                <InputOTPSlot index={1} size="lg" />
+                <InputOTPSlot index={2} size="lg" />
+                <InputOTPSlot index={3} size="lg" />
               </InputOTPGroup>
             </InputOTP>
           </Box>
@@ -799,7 +777,7 @@ export default function AuthDialog({
             display: 'flex',
             justifyContent: 'center',
             animation: shake ? `${shakeKeyframes} 0.4s` : 'none',
-            px: { xs: 2, sm: 4 },
+            px: { xs: 3, sm: 4 },
           }}
         >
           <InputOTP
@@ -808,35 +786,13 @@ export default function AuthDialog({
             onChange={handleIdNumberChange}
             disabled={loading}
             inputMode="numeric"
-            sx={{
-              width: '100%',
-              display: 'flex',
-              justifyContent: 'center',
-              '& > div': {
-                width: '100%',
-                display: 'flex',
-                gap: 2,
-                justifyContent: 'center',
-              },
-              '& [data-slot]': {
-                flex: 1,
-                minWidth: 80,
-                maxWidth: 120,
-                height: 80,
-                fontSize: '36px',
-                fontWeight: 600,
-              },
-              '& [data-slot][data-active=true]': {
-                borderColor: 'primary.main',
-                borderWidth: 2,
-              },
-            }}
+            containerClassName="w-full justify-center gap-2 sm:gap-3"
           >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
+            <InputOTPGroup className="gap-2 sm:gap-3">
+              <InputOTPSlot index={0} size="lg" />
+              <InputOTPSlot index={1} size="lg" />
+              <InputOTPSlot index={2} size="lg" />
+              <InputOTPSlot index={3} size="lg" />
             </InputOTPGroup>
           </InputOTP>
         </Box>
@@ -889,11 +845,12 @@ export default function AuthDialog({
               component="div"
               align="center"
               sx={{
-                fontSize: '20px',
+                fontSize: 'clamp(10px, 3.5vw, 20px)',
                 fontWeight: 500,
+                whiteSpace: 'nowrap',
               }}
             >
-              中華工程股份有限公司股東資料回報
+              中華工程股份有限公司114年ESG利害關係人問卷
             </Typography>
           </Box>
         </DialogTitle>
