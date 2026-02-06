@@ -51,7 +51,7 @@ export default function AuthDialog({
   const [sendingCode, setSendingCode] = useState(false) // 發送驗證碼中
   const [error, setError] = useState(null)
   const [errorType, setErrorType] = useState(null)
-  const [contactInfo] = useState('電話：02-1234-5678 | 電子郵件：admin@example.com')
+  const [contactInfo] = useState('電話：028787-6260 | 電子郵件：226155@bes.com.tw')
   const [shake, setShake] = useState(false)
   const [expiresAt, setExpiresAt] = useState(null) // 驗證碼過期時間
   const [remainingSeconds, setRemainingSeconds] = useState(null) // 剩餘秒數
@@ -605,15 +605,16 @@ export default function AuthDialog({
                   disabled={sendingCode || loading}
                   style={{
                     width: '100%',
-                    padding: '10px 16px',
-                    borderRadius: 4,
+                    padding: '12px 16px',
+                    borderRadius: 8,
                     border: 'none',
-                    backgroundColor: '#1976d2',
+                    backgroundColor: '#0369A1',
                     color: '#fff',
-                    fontSize: 14,
-                    fontWeight: 500,
+                    fontSize: 15,
+                    fontWeight: 600,
                     cursor: sendingCode || loading ? 'not-allowed' : 'pointer',
                     opacity: sendingCode || loading ? 0.7 : 1,
+                    transition: 'background-color 200ms',
                   }}
                   aria-label="獲取手機驗證碼"
                 >
@@ -632,14 +633,15 @@ export default function AuthDialog({
                   disabled={loading}
                   style={{
                     width: '100%',
-                    padding: '10px 16px',
-                    borderRadius: 4,
-                    border: '1px solid rgba(0,0,0,0.23)',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    border: '1px solid #CBD5E1',
                     backgroundColor: '#fff',
-                    color: 'rgba(0,0,0,0.87)',
-                    fontSize: 14,
-                    fontWeight: 500,
+                    color: '#334155',
+                    fontSize: 15,
+                    fontWeight: 600,
                     cursor: loading ? 'not-allowed' : 'pointer',
+                    transition: 'background-color 200ms',
                   }}
                   aria-label="改用身分證驗證"
                 >
@@ -810,6 +812,7 @@ export default function AuthDialog({
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          backgroundColor: '#F8FAFC',
         },
       }}
     >
@@ -825,44 +828,96 @@ export default function AuthDialog({
           }
         }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ padding: 0 }}>
+          {/* 深色頂部區塊 */}
           <Box
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            gap={2}
-            sx={{ padding: { xs: '16px 16px 12px 16px', sm: '24px 24px 16px 24px' } }}
+            sx={{
+              background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+              color: '#fff',
+              px: { xs: 2, sm: 4 },
+              pt: { xs: 3, sm: 4 },
+              pb: { xs: 3, sm: 4 },
+            }}
           >
-            <Image
-              src="/logo.png"
-              alt="中華工程股份有限公司 Logo"
-              width={40}
-              height={40}
-              style={{ objectFit: 'contain' }}
+            {/* 第一段：Logo + 公司名稱 */}
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              gap={1.5}
+              sx={{ mb: 1.5 }}
+            >
+              <Box
+                sx={{
+                  width: { xs: 40, sm: 48 },
+                  height: { xs: 40, sm: 48 },
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Image
+                  src="/logo.png"
+                  alt="中華工程股份有限公司 Logo"
+                  width={32}
+                  height={32}
+                  style={{ objectFit: 'contain' }}
+                />
+              </Box>
+              <Typography
+                variant="h5"
+                component="div"
+                sx={{
+                  fontSize: { xs: '18px', sm: '22px' },
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  color: '#fff',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                中華工程股份有限公司
+              </Typography>
+            </Box>
+            {/* 分隔線 */}
+            <Box
+              sx={{
+                width: 40,
+                height: 3,
+                borderRadius: 2,
+                backgroundColor: '#0369A1',
+                mx: 'auto',
+                mb: 1.5,
+              }}
             />
+            {/* 第二段：主要標題 */}
             <Typography
-              variant="h5"
+              variant="h6"
               component="div"
               align="center"
               sx={{
-                fontSize: 'clamp(10px, 3.5vw, 20px)',
-                fontWeight: 500,
-                whiteSpace: 'nowrap',
+                fontSize: { xs: '20px', sm: '24px' },
+                fontWeight: 600,
+                color: 'rgba(255,255,255,0.9)',
+                letterSpacing: '1px',
               }}
             >
-              中華工程股份有限公司114年ESG利害關係人問卷
+              114 年 ESG 利害關係人問卷
             </Typography>
           </Box>
         </DialogTitle>
         <DialogContent
           sx={{
-            padding: { xs: '16px', sm: '24px' },
+            padding: { xs: '24px 16px', sm: '32px 24px' },
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             flex: '1 1 auto',
             minHeight: '50vh',
             justifyContent: 'center',
+            backgroundColor: '#F8FAFC',
           }}
         >
           {renderInputFields()}
@@ -897,7 +952,7 @@ export default function AuthDialog({
                     marginBottom: 1,
                   }}
                 >
-                  請確認已掃描信件上的 QR Code，並輸入您的驗證碼
+                  驗證失敗，請重新輸入驗證碼或身分證末四碼
                 </Typography>
                 <Box sx={{ fontSize: '12px', color: 'text.secondary' }}>
                   若持續無法驗證，請聯絡我們：{contactInfo}
