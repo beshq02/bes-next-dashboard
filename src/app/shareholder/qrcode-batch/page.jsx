@@ -675,7 +675,7 @@ export default function QRCodeBatchPage() {
       </AppBar>
 
       {/* 頁面內容 */}
-      <Box sx={{ padding: { xs: 2, sm: 3, md: 4 } }}>
+      <Box sx={{ padding: { xs: 1, sm: 3, md: 4 } }}>
         {' '}
         {/* 文檔規範：頁面邊距 lg 或 xl (24-32px) */}
         <Paper sx={{ padding: 3, marginBottom: 3 }}>

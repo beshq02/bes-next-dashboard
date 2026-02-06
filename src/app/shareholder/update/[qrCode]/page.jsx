@@ -220,7 +220,7 @@ export default function ShareholderUpdatePage() {
           justifyContent="center"
           alignItems="center"
           minHeight="calc(100vh - 64px)"
-          padding={3}
+          sx={{ padding: { xs: 1, sm: 3 } }}
         >
           <ErrorMessage code={error.code} message={error.message} contactInfo={error.contactInfo} />
         </Box>
@@ -241,7 +241,7 @@ export default function ShareholderUpdatePage() {
       {/* 頁面內容 */}
       <Box
         sx={{
-          padding: { xs: 2, sm: 3, md: 4 },
+          padding: { xs: 1, sm: 3, md: 4 },
         }}
       >
         {showAuthDialog && !isAuthenticated && (

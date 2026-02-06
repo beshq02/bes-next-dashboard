@@ -831,7 +831,7 @@ export default function AuthDialog({
             flexDirection="column"
             alignItems="center"
             gap={2}
-            sx={{ padding: '24px 24px 16px 24px' }}
+            sx={{ padding: { xs: '16px 16px 12px 16px', sm: '24px 24px 16px 24px' } }}
           >
             <Image
               src="/logo.png"
@@ -856,7 +856,7 @@ export default function AuthDialog({
         </DialogTitle>
         <DialogContent
           sx={{
-            padding: '24px',
+            padding: { xs: '16px', sm: '24px' },
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',

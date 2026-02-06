@@ -21,11 +21,11 @@ export default function ThankYouPage() {
       sx={{
         minHeight: '100vh',
         backgroundColor: '#f5f5f5',
-        py: { xs: 3, sm: 4 },
-        px: { xs: 2, sm: 3 },
+        py: { xs: 2, sm: 4 },
+        px: { xs: 1, sm: 3 },
       }}
     >
-      <Box sx={{ maxWidth: 600, margin: '0 auto' }}>
+      <Box sx={{ maxWidth: { xs: '100%', sm: 600 }, margin: '0 auto' }}>
         {/* 成功提示卡片 */}
         <Card
           elevation={0}

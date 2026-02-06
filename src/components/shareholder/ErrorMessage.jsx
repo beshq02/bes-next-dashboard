@@ -9,7 +9,7 @@ import { Alert, AlertTitle, Box, Typography } from '@mui/material'
 
 export default function ErrorMessage({ code, message, contactInfo }) {
   return (
-    <Alert severity="error" sx={{ maxWidth: 600, width: '100%' }}>
+    <Alert severity="error" sx={{ maxWidth: { xs: '100%', sm: 600 }, width: '100%' }}>
       <AlertTitle>錯誤</AlertTitle>
       <Typography variant="body1" component="div">
         {message}

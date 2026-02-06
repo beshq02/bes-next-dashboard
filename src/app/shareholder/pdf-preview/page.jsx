@@ -122,7 +122,7 @@ export default function PDFPreviewPage() {
       sx={{
         minHeight: '100vh',
         backgroundColor: '#f5f5f5',
-        padding: 3,
+        padding: { xs: 1, sm: 3 },
       }}
     >
       <Paper sx={{ padding: 3, marginBottom: 3 }}>

@@ -348,7 +348,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
   const displayName = (shareholderData?.name || '').trim().replace(/\s+/g, ' ') || null
 
   return (
-    <Box sx={{ maxWidth: 600, margin: '0 auto', marginTop: 4, px: 2 }}>
+    <Box sx={{ maxWidth: { xs: '100%', sm: 600 }, margin: '0 auto', marginTop: { xs: 2, sm: 4 }, px: { xs: 0, sm: 2 } }}>
       {/* 歡迎詞區塊 */}
       <Box sx={{ marginBottom: 3 }}>
         <Typography
@@ -379,12 +379,12 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
       <Card
         elevation={0}
         sx={{
-          borderRadius: '12px',
+          borderRadius: { xs: '8px', sm: '12px' },
           border: '1px solid #e0e0e0',
           overflow: 'visible',
         }}
       >
-        <CardContent sx={{ p: 3 }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           <form onSubmit={handleSubmit}>
             {/* 地址區塊 */}
             <Box sx={{ mb: 4 }}>
