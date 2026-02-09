@@ -8,7 +8,16 @@
       "Bash(npx skills find:*)",
       "Bash(python3:*)",
       "Bash(python:*)",
-      "mcp__mssqlSTAGE__list_tables"
+      "mcp__mssqlSTAGE__list_tables",
+      "mcp__mssqlSTAGE__read_query",
+      "mcp__mssqlSTAGE__describe_table",
+      "mcp__mssqlSTAGE__alter_table",
+      "mcp__mssqlSTAGE__write_query",
+      "Bash(node:*)",
+      "Bash(dir:*)",
+      "mcp__mssqlSTAGE__create_table",
+      "Bash(pip show:*)",
+      "Bash(pip install:*)"
     ]
   }
 }

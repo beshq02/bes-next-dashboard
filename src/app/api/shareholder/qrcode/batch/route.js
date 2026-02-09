@@ -46,9 +46,9 @@ export async function POST(request) {
     // SQL Server 的參數化查詢需要明確指定每個參數
     const placeholders = shareholderCodes.map((_, index) => `@code${index}`).join(', ')
     const query = `
-      SELECT NAME, SHAREHOLDER_CODE, UUID
+      SELECT NAME, [SORT], UUID
       FROM [STAGE].[dbo].[SHAREHOLDER]
-      WHERE SHAREHOLDER_CODE IN (${placeholders})
+      WHERE [SORT] IN (${placeholders})
     `
     
     // 建立參數物件，確保參數名稱與 SQL 中的佔位符一致
@@ -103,16 +103,16 @@ export async function POST(request) {
           )
           
           return {
-            shareholderCode: shareholder.SHAREHOLDER_CODE,
+            shareholderCode: shareholder.SORT,
             name: shareholder.NAME,
             uuid: qrCodeUUID,
             qrCodeUrl: qrCodeData.qrCodeUrl,
             qrCodeDataUrl: qrCodeData.qrCodeDataUrl,
           }
         } catch (error) {
-          console.error(`產生 QR Code 失敗 (股東代號: ${shareholder.SHAREHOLDER_CODE}):`, error)
+          console.error(`產生 QR Code 失敗 (股東代號: ${shareholder.SORT}):`, error)
           return {
-            shareholderCode: shareholder.SHAREHOLDER_CODE,
+            shareholderCode: shareholder.SORT,
             name: shareholder.NAME,
             error: error.message,
           }

@@ -15,19 +15,28 @@ import {
   Card,
   Stack,
   Button,
+  Select,
   Divider,
+  MenuItem,
   TextField,
   Typography,
+  InputLabel,
   CardContent,
+  FormControl,
+  FormHelperText,
 } from '@mui/material'
+
+import { areaData } from '@/lib/data/taiwanAreaData'
 
 export default function DataForm({ shareholderData, qrCode, logId }) {
   // 地址欄位
   const [city, setCity] = useState('')
   const [district, setDistrict] = useState('')
+  const [postalCode, setPostalCode] = useState('')
   const [address, setAddress] = useState('')
   const [originalCity, setOriginalCity] = useState('')
   const [originalDistrict, setOriginalDistrict] = useState('')
+  const [originalPostalCode, setOriginalPostalCode] = useState('')
   const [originalAddress, setOriginalAddress] = useState('')
 
   // 電話欄位
@@ -61,6 +70,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
       // 設定原始值
       setOriginalCity(shareholderData.originalCity || '')
       setOriginalDistrict(shareholderData.originalDistrict || '')
+      setOriginalPostalCode(shareholderData.originalPostalCode || '')
       setOriginalAddress(shareholderData.originalAddress || '')
       setOriginalHomePhone1(shareholderData.originalHomePhone1 || '')
       setOriginalHomePhone2(shareholderData.originalHomePhone2 || '')
@@ -68,15 +78,21 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
       setOriginalMobilePhone2(shareholderData.originalMobilePhone2 || '')
 
       // 計算初始顯示值（有更新值顯示更新值，沒有就顯示原值）
-      setCity(
-        hasValue(shareholderData.updatedCity)
-          ? shareholderData.updatedCity
-          : shareholderData.originalCity || ''
-      )
-      setDistrict(
-        hasValue(shareholderData.updatedDistrict)
-          ? shareholderData.updatedDistrict
-          : shareholderData.originalDistrict || ''
+      const initialCity = hasValue(shareholderData.updatedCity)
+        ? shareholderData.updatedCity
+        : shareholderData.originalCity || ''
+      setCity(initialCity)
+
+      // 行政區：若初始縣市在 areaData 中且行政區值也在該縣市的清單中，才設定
+      const initialDistrict = hasValue(shareholderData.updatedDistrict)
+        ? shareholderData.updatedDistrict
+        : shareholderData.originalDistrict || ''
+      setDistrict(initialDistrict)
+
+      setPostalCode(
+        hasValue(shareholderData.updatedPostalCode)
+          ? shareholderData.updatedPostalCode
+          : shareholderData.originalPostalCode || ''
       )
       setAddress(
         hasValue(shareholderData.updatedAddress)
@@ -113,7 +129,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
     switch (fieldName) {
       case 'city':
         if (!trimmedValue) {
-          setCityError('請輸入縣市')
+          setCityError('請選擇縣市')
           return false
         }
         setCityError('')
@@ -121,7 +137,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
 
       case 'district':
         if (!trimmedValue) {
-          setDistrictError('請輸入鄉鎮市區')
+          setDistrictError('請選擇鄉鎮市區')
           return false
         }
         setDistrictError('')
@@ -186,13 +202,20 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
   const handleCityChange = e => {
     const value = e.target.value
     setCity(value)
+    setDistrict('') // 縣市變更時清空行政區
     if (touchedFields.city) validateField('city', value)
+    if (touchedFields.district) setDistrictError('')
   }
 
   const handleDistrictChange = e => {
     const value = e.target.value
     setDistrict(value)
     if (touchedFields.district) validateField('district', value)
+  }
+
+  const handlePostalCodeChange = e => {
+    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 5)
+    setPostalCode(value)
   }
 
   const handleAddressChange = e => {
@@ -270,6 +293,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
     const updateData = {
       updatedCity: city.trim() || null,
       updatedDistrict: district.trim() || null,
+      updatedPostalCode: postalCode.trim() || null,
       updatedAddress: address.trim() || null,
       updatedHomePhone1: homePhone1.trim() || null,
       updatedHomePhone2: homePhone2.trim() || null,
@@ -345,7 +369,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
   }
 
   // 顯示用姓名：去除前後空白、合併連續空白，空值不顯示
-  const displayName = (shareholderData?.name || '').trim().replace(/\s+/g, ' ') || null
+  const displayName = (shareholderData?.name || '').replace(/\s+/g, '') || null
 
   return (
     <Box sx={{ maxWidth: { xs: '100%', sm: 600 }, margin: '0 auto', marginTop: { xs: 2, sm: 4 }, px: { xs: 0, sm: 2 } }}>
@@ -402,42 +426,78 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                 聯絡地址
               </Typography>
 
-              {/* 縣市和鄉鎮市區 - 並排 */}
+              {/* 郵遞區號 */}
+              <TextField
+                label="郵遞區號"
+                value={postalCode}
+                onChange={handlePostalCodeChange}
+                fullWidth={false}
+                variant="outlined"
+                size="small"
+                sx={{ ...textFieldSx, mb: 2, width: '120px' }}
+                inputProps={{
+                  maxLength: 5,
+                  inputMode: 'numeric',
+                  'aria-label': '郵遞區號',
+                }}
+              />
+
+              {/* 縣市和鄉鎮市區 - 並排下拉選單 */}
               <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                <TextField
-                  label="縣市"
-                  value={city}
-                  onChange={handleCityChange}
-                  onBlur={() => handleBlur('city')}
+                <FormControl
+                  fullWidth
+                  size="small"
+                  required
                   error={!!cityError && touchedFields.city}
-                  helperText={touchedFields.city && cityError ? cityError : ''}
-                  required
-                  fullWidth
-                  variant="outlined"
-                  size="small"
                   sx={textFieldSx}
-                  inputProps={{
-                    'aria-label': '縣市',
-                    'aria-required': 'true',
-                  }}
-                />
-                <TextField
-                  label="鄉鎮市區"
-                  value={district}
-                  onChange={handleDistrictChange}
-                  onBlur={() => handleBlur('district')}
+                >
+                  <InputLabel>縣市</InputLabel>
+                  <Select
+                    label="縣市"
+                    value={city}
+                    onChange={handleCityChange}
+                    onBlur={() => handleBlur('city')}
+                    sx={{ borderRadius: '8px', backgroundColor: '#fff' }}
+                    inputProps={{ 'aria-label': '縣市', 'aria-required': 'true' }}
+                  >
+                    {Object.keys(areaData).map(cityName => (
+                      <MenuItem key={cityName} value={cityName}>
+                        {cityName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {touchedFields.city && cityError && (
+                    <FormHelperText>{cityError}</FormHelperText>
+                  )}
+                </FormControl>
+
+                <FormControl
+                  fullWidth
+                  size="small"
+                  required
                   error={!!districtError && touchedFields.district}
-                  helperText={touchedFields.district && districtError ? districtError : ''}
-                  required
-                  fullWidth
-                  variant="outlined"
-                  size="small"
                   sx={textFieldSx}
-                  inputProps={{
-                    'aria-label': '鄉鎮市區',
-                    'aria-required': 'true',
-                  }}
-                />
+                >
+                  <InputLabel>鄉鎮市區</InputLabel>
+                  <Select
+                    label="鄉鎮市區"
+                    value={city && areaData[city] ? district : ''}
+                    onChange={handleDistrictChange}
+                    onBlur={() => handleBlur('district')}
+                    disabled={!city || !areaData[city]}
+                    sx={{ borderRadius: '8px', backgroundColor: '#fff' }}
+                    inputProps={{ 'aria-label': '鄉鎮市區', 'aria-required': 'true' }}
+                  >
+                    {(areaData[city] || []).map(districtName => (
+                      <MenuItem key={districtName} value={districtName}>
+                        {districtName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {touchedFields.district && districtError && (
+                    <FormHelperText>{districtError}</FormHelperText>
+                  )}
+                </FormControl>
               </Stack>
 
               {/* 詳細地址 */}

@@ -72,7 +72,7 @@ export async function POST(request) {
 
     // 查詢股東資料
     const query = `
-      SELECT SHAREHOLDER_CODE, UUID, UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1
+      SELECT [SORT], UUID, UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1
       FROM [STAGE].[dbo].[SHAREHOLDER]
       WHERE UUID = @uuid
     `
@@ -128,7 +128,7 @@ export async function POST(request) {
       code: verificationCode,
       expiresAt,
       sentAt, // 記錄發送時間，用於檢查冷卻時間
-      shareholderCode: shareholder.SHAREHOLDER_CODE,
+      shareholderCode: shareholder.SORT,
     })
     console.log(`[儲存驗證碼] storeKey: "${storeKey}", verificationCode: "${verificationCode}", type: ${typeof verificationCode}`)
 
@@ -174,7 +174,7 @@ export async function POST(request) {
         `
         await db.query(updateLogQuery, {
           scanLogId,
-          shareholderCode: shareholder.SHAREHOLDER_CODE,
+          shareholderCode: shareholder.SORT,
           phoneNumber,
           randomCode: verificationCode,
         })
@@ -190,7 +190,7 @@ export async function POST(request) {
         await db.query(insertLogQuery, {
           logId,
           shareholderUuid: shareholder.UUID,
-          shareholderCode: shareholder.SHAREHOLDER_CODE,
+          shareholderCode: shareholder.SORT,
           phoneNumber,
           randomCode: verificationCode,
         })
