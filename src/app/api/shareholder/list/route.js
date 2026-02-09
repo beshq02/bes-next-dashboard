@@ -20,10 +20,12 @@ export async function GET(request) {
     // 查詢所有股東資料（包含所有需要的欄位）
     const query = `
       SELECT
-        SHAREHOLDER_CODE,
+        [SORT],
         NAME,
         UUID,
         ID_LAST_FOUR,
+        CITY1,
+        DISTRICT1,
         ORIGINAL_ADDRESS,
         UPDATED_ADDRESS,
         HOME_PHONE_1,
@@ -33,7 +35,7 @@ export async function GET(request) {
         LOGIN_COUNT,
         UPDATE_COUNT
       FROM [STAGE].[dbo].[SHAREHOLDER]
-      ORDER BY SHAREHOLDER_CODE ASC
+      ORDER BY [SORT] ASC
     `
     
     let shareholders
@@ -53,11 +55,17 @@ export async function GET(request) {
     // 轉換資料格式（大寫欄位名稱轉 camelCase）
     // 如果查詢結果為空陣列，也應該返回空陣列而不是錯誤
     const responseData = (shareholders || []).map((shareholder, index) => {
-      // 處理空字串和 null 值
+      // 處理空字串和 null 值（trim 後若為空則回傳 null）
       const getValue = (value) => {
         if (value === null || value === undefined) return null
         const strValue = String(value).trim()
         return strValue === '' ? null : strValue
+      }
+      // 移除所有空白字元（用於姓名等不應含空白的欄位）
+      const stripAll = (value) => {
+        if (value === null || value === undefined) return null
+        const stripped = String(value).replace(/\s+/g, '')
+        return stripped === '' ? null : stripped
       }
       
       // 支援大小寫不敏感的欄位名稱讀取
@@ -80,7 +88,7 @@ export async function GET(request) {
       if (index === 0) {
         console.log('第一筆原始資料:', {
           allKeys: Object.keys(shareholder),
-          SHAREHOLDER_CODE: getField(shareholder, 'SHAREHOLDER_CODE', 'shareholder_code'),
+          SORT: getField(shareholder, 'SORT', 'sort'),
           ORIGINAL_ADDRESS: getField(shareholder, 'ORIGINAL_ADDRESS', 'original_address'),
           UPDATED_ADDRESS: getField(shareholder, 'UPDATED_ADDRESS', 'updated_address'),
           HOME_PHONE_1: getField(shareholder, 'HOME_PHONE_1', 'home_phone_1'),
@@ -91,10 +99,12 @@ export async function GET(request) {
       }
 
       const result = {
-        shareholderCode: getField(shareholder, 'SHAREHOLDER_CODE', 'shareholder_code') || null,
-        name: getField(shareholder, 'NAME', 'name') || null,
-        uuid: getField(shareholder, 'UUID', 'uuid') || null,
-        idNumberLast4: getField(shareholder, 'ID_LAST_FOUR', 'id_last_four') || null,
+        shareholderCode: getValue(getField(shareholder, 'SORT', 'sort')),
+        name: stripAll(getField(shareholder, 'NAME', 'name')),
+        uuid: getValue(getField(shareholder, 'UUID', 'uuid')),
+        idNumberLast4: getValue(getField(shareholder, 'ID_LAST_FOUR', 'id_last_four')),
+        city1: getValue(getField(shareholder, 'CITY1', 'city1')),
+        district1: getValue(getField(shareholder, 'DISTRICT1', 'district1')),
         originalAddress: getValue(getField(shareholder, 'ORIGINAL_ADDRESS', 'original_address')),
         updatedAddress: getValue(getField(shareholder, 'UPDATED_ADDRESS', 'updated_address')),
         originalHomePhone: getValue(getField(shareholder, 'HOME_PHONE_1', 'home_phone_1')),

@@ -35,20 +35,21 @@ export async function GET(request, { params }) {
       )
     }
 
-    // 查詢股東資料（使用 SHAREHOLDER_CODE 作為主鍵）
+    // 查詢股東資料（使用 SORT 作為主鍵）
     const query = `
-      SELECT SHAREHOLDER_CODE, NAME, UUID,
-             CITY1, DISTRICT, ORIGINAL_ADDRESS,
+      SELECT [SORT], NAME, UUID,
+             CITY1, DISTRICT1, POSTAL_CODE, ORIGINAL_ADDRESS,
              HOME_PHONE_1, HOME_PHONE_2, MOBILE_PHONE_1, MOBILE_PHONE_2,
              UPDATED_CITY, UPDATED_DISTRICT, UPDATED_ADDRESS,
+             UPDATED_POSTAL_CODE,
              UPDATED_HOME_PHONE_1, UPDATED_HOME_PHONE_2,
              UPDATED_MOBILE_PHONE_1, UPDATED_MOBILE_PHONE_2,
              LOGIN_COUNT, UPDATE_COUNT,
              CREATED_AT, UPDATED_AT
       FROM [STAGE].[dbo].[SHAREHOLDER]
-      WHERE SHAREHOLDER_CODE = @shareholderCode
+      WHERE [SORT] = @shareholderCode
     `
-    
+
     const shareholders = await db.query(query, { shareholderCode: id })
     
     if (!shareholders || shareholders.length === 0) {
@@ -60,26 +61,41 @@ export async function GET(request, { params }) {
     
     const shareholder = shareholders[0]
     
+    // 輔助函數：清理字串值（trim 後若為空則回傳 null）
+    const clean = (val) => {
+      if (val === null || val === undefined) return null
+      const trimmed = String(val).trim()
+      return trimmed === '' ? null : trimmed
+    }
+    // 輔助函數：移除所有空白字元（用於姓名等不應含空白的欄位）
+    const stripAll = (val) => {
+      if (val === null || val === undefined) return null
+      const stripped = String(val).replace(/\s+/g, '')
+      return stripped === '' ? null : stripped
+    }
+
     const responseData = {
-      shareholderCode: shareholder.SHAREHOLDER_CODE,
-      name: shareholder.NAME,
-      uuid: shareholder.UUID,
+      shareholderCode: clean(shareholder.SORT),
+      name: stripAll(shareholder.NAME),
+      uuid: clean(shareholder.UUID),
       // 地址欄位
-      originalCity: shareholder.CITY1 || null,
-      originalDistrict: shareholder.DISTRICT || null,
-      originalAddress: shareholder.ORIGINAL_ADDRESS || null,
-      updatedCity: shareholder.UPDATED_CITY || null,
-      updatedDistrict: shareholder.UPDATED_DISTRICT || null,
-      updatedAddress: shareholder.UPDATED_ADDRESS || null,
+      originalCity: clean(shareholder.CITY1),
+      originalDistrict: clean(shareholder.DISTRICT1),
+      originalPostalCode: clean(shareholder.POSTAL_CODE),
+      originalAddress: clean(shareholder.ORIGINAL_ADDRESS),
+      updatedCity: clean(shareholder.UPDATED_CITY),
+      updatedDistrict: clean(shareholder.UPDATED_DISTRICT),
+      updatedPostalCode: clean(shareholder.UPDATED_POSTAL_CODE),
+      updatedAddress: clean(shareholder.UPDATED_ADDRESS),
       // 電話欄位
-      originalHomePhone1: shareholder.HOME_PHONE_1 || null,
-      originalHomePhone2: shareholder.HOME_PHONE_2 || null,
-      originalMobilePhone1: shareholder.MOBILE_PHONE_1 || null,
-      originalMobilePhone2: shareholder.MOBILE_PHONE_2 || null,
-      updatedHomePhone1: shareholder.UPDATED_HOME_PHONE_1 || null,
-      updatedHomePhone2: shareholder.UPDATED_HOME_PHONE_2 || null,
-      updatedMobilePhone1: shareholder.UPDATED_MOBILE_PHONE_1 || null,
-      updatedMobilePhone2: shareholder.UPDATED_MOBILE_PHONE_2 || null,
+      originalHomePhone1: clean(shareholder.HOME_PHONE_1),
+      originalHomePhone2: clean(shareholder.HOME_PHONE_2),
+      originalMobilePhone1: clean(shareholder.MOBILE_PHONE_1),
+      originalMobilePhone2: clean(shareholder.MOBILE_PHONE_2),
+      updatedHomePhone1: clean(shareholder.UPDATED_HOME_PHONE_1),
+      updatedHomePhone2: clean(shareholder.UPDATED_HOME_PHONE_2),
+      updatedMobilePhone1: clean(shareholder.UPDATED_MOBILE_PHONE_1),
+      updatedMobilePhone2: clean(shareholder.UPDATED_MOBILE_PHONE_2),
       // 其他欄位
       loginCount: shareholder.LOGIN_COUNT || 0,
       updateCount: shareholder.UPDATE_COUNT || 0,
@@ -117,6 +133,7 @@ export async function PUT(request, { params }) {
     const body = await request.json()
     const {
       updatedCity, updatedDistrict, updatedAddress,
+      updatedPostalCode,
       updatedHomePhone1, updatedHomePhone2,
       updatedMobilePhone1, updatedMobilePhone2,
       logId
@@ -140,6 +157,7 @@ export async function PUT(request, { params }) {
     // 檢查是否有提供任何要更新的欄位
     const hasAnyField = [
       updatedCity, updatedDistrict, updatedAddress,
+      updatedPostalCode,
       updatedHomePhone1, updatedHomePhone2,
       updatedMobilePhone1, updatedMobilePhone2
     ].some(field => field !== undefined)
@@ -151,19 +169,20 @@ export async function PUT(request, { params }) {
       )
     }
 
-    // 先查詢現有資料（使用 SHAREHOLDER_CODE 作為主鍵）
+    // 先查詢現有資料（使用 SORT 作為主鍵）
     // 需要同時取得 ORIGINAL_* 和 UPDATED_* 欄位以計算預設值
     const selectQuery = `
       SELECT
-        CITY1, DISTRICT, ORIGINAL_ADDRESS,
+        CITY1, DISTRICT1, POSTAL_CODE, ORIGINAL_ADDRESS,
         HOME_PHONE_1, HOME_PHONE_2, MOBILE_PHONE_1, MOBILE_PHONE_2,
         UPDATED_CITY, UPDATED_DISTRICT, UPDATED_ADDRESS,
+        UPDATED_POSTAL_CODE,
         UPDATED_HOME_PHONE_1, UPDATED_HOME_PHONE_2,
         UPDATED_MOBILE_PHONE_1, UPDATED_MOBILE_PHONE_2
       FROM [STAGE].[dbo].[SHAREHOLDER]
-      WHERE SHAREHOLDER_CODE = @shareholderCode
+      WHERE [SORT] = @shareholderCode
     `
-    
+
     const existingData = await db.query(selectQuery, { shareholderCode: id })
     
     if (!existingData || existingData.length === 0) {
@@ -187,7 +206,8 @@ export async function PUT(request, { params }) {
     
     // 計算各欄位的預設值
     const defaultCity = getDefaultValue(existing.UPDATED_CITY, existing.CITY1)
-    const defaultDistrict = getDefaultValue(existing.UPDATED_DISTRICT, existing.DISTRICT)
+    const defaultDistrict = getDefaultValue(existing.UPDATED_DISTRICT, existing.DISTRICT1)
+    const defaultPostalCode = getDefaultValue(existing.UPDATED_POSTAL_CODE, existing.POSTAL_CODE)
     const defaultAddress = getDefaultValue(existing.UPDATED_ADDRESS, existing.ORIGINAL_ADDRESS)
     const defaultHomePhone1 = getDefaultValue(existing.UPDATED_HOME_PHONE_1, existing.HOME_PHONE_1) || null
     const defaultHomePhone2 = getDefaultValue(existing.UPDATED_HOME_PHONE_2, existing.HOME_PHONE_2) || null
@@ -216,6 +236,16 @@ export async function PUT(request, { params }) {
         updateFields.push('UPDATED_DISTRICT = @updatedDistrict')
         updateParams.updatedDistrict = trimmedDistrict
         updatedParams.updatedDistrict = trimmedDistrict
+      }
+    }
+
+    // 處理郵遞區號欄位
+    if (updatedPostalCode !== undefined) {
+      const trimmedPostalCode = (updatedPostalCode || '').trim()
+      if (trimmedPostalCode !== defaultPostalCode) {
+        updateFields.push('UPDATED_POSTAL_CODE = @updatedPostalCode')
+        updateParams.updatedPostalCode = trimmedPostalCode
+        updatedParams.updatedPostalCode = trimmedPostalCode
       }
     }
 
@@ -278,7 +308,7 @@ export async function PUT(request, { params }) {
       SET ${updateFields.length > 0 ? updateFields.join(', ') + ',' : ''}
           UPDATE_COUNT = UPDATE_COUNT + 1,
           UPDATED_AT = GETDATE()
-      WHERE SHAREHOLDER_CODE = @shareholderCode
+      WHERE [SORT] = @shareholderCode
     `
 
     await db.query(updateQuery, updateParams)
@@ -309,23 +339,24 @@ export async function PUT(request, { params }) {
 
     // 查詢更新後的資料
     const updatedQuery = `
-      SELECT SHAREHOLDER_CODE, NAME,
-             UPDATED_CITY, UPDATED_DISTRICT, UPDATED_ADDRESS,
+      SELECT [SORT], NAME,
+             UPDATED_CITY, UPDATED_DISTRICT, UPDATED_POSTAL_CODE, UPDATED_ADDRESS,
              UPDATED_HOME_PHONE_1, UPDATED_HOME_PHONE_2,
              UPDATED_MOBILE_PHONE_1, UPDATED_MOBILE_PHONE_2,
              LOGIN_COUNT, UPDATE_COUNT, UPDATED_AT
       FROM [STAGE].[dbo].[SHAREHOLDER]
-      WHERE SHAREHOLDER_CODE = @shareholderCode
+      WHERE [SORT] = @shareholderCode
     `
 
     const updatedData = await db.query(updatedQuery, { shareholderCode: id })
     const updated = updatedData[0]
 
     const responseData = {
-      shareholderCode: updated.SHAREHOLDER_CODE,
+      shareholderCode: updated.SORT,
       name: updated.NAME,
       updatedCity: updated.UPDATED_CITY || null,
       updatedDistrict: updated.UPDATED_DISTRICT || null,
+      updatedPostalCode: updated.UPDATED_POSTAL_CODE || null,
       updatedAddress: updated.UPDATED_ADDRESS || null,
       updatedHomePhone1: updated.UPDATED_HOME_PHONE_1 || null,
       updatedHomePhone2: updated.UPDATED_HOME_PHONE_2 || null,

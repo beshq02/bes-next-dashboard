@@ -205,7 +205,7 @@ export async function POST(request) {
     if (uuidPattern.test(qrCodeIdentifier)) {
       // UUID 格式：直接根據 UUID 查詢
       const qrCodeQuery = `
-        SELECT SHAREHOLDER_CODE, UUID, NAME, ORIGINAL_ADDRESS,
+        SELECT [SORT], UUID, NAME, ORIGINAL_ADDRESS,
                COALESCE(UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1, '') AS PHONE,
                UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1
         FROM [STAGE].[dbo].[SHAREHOLDER]
@@ -222,7 +222,7 @@ export async function POST(request) {
       }
 
       qrCodeShareholder = {
-        shareholder_code: qrCodeShareholders[0].SHAREHOLDER_CODE,
+        shareholder_code: qrCodeShareholders[0].SORT,
         uuid: qrCodeShareholders[0].UUID,
         name: qrCodeShareholders[0].NAME,
         address: qrCodeShareholders[0].ORIGINAL_ADDRESS,
@@ -354,7 +354,7 @@ export async function POST(request) {
       // 身分證末四碼驗證
       // 查詢身分證末四碼對應的股東（可能重複，需再與 QR Code 檢查碼比對）
       const idLastFourQuery = `
-        SELECT SHAREHOLDER_CODE, UUID, NAME, ORIGINAL_ADDRESS,
+        SELECT [SORT], UUID, NAME, ORIGINAL_ADDRESS,
                COALESCE(UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1, '') AS PHONE
         FROM [STAGE].[dbo].[SHAREHOLDER]
         WHERE ID_LAST_FOUR = @idLastFour
@@ -374,7 +374,7 @@ export async function POST(request) {
       }
 
       const idLastFourShareholder = {
-        shareholder_code: idLastFourShareholders[0].SHAREHOLDER_CODE,
+        shareholder_code: idLastFourShareholders[0].SORT,
         uuid: idLastFourShareholders[0].UUID,
         name: idLastFourShareholders[0].NAME,
         address: idLastFourShareholders[0].ORIGINAL_ADDRESS,
@@ -432,7 +432,7 @@ export async function POST(request) {
       UPDATE [STAGE].[dbo].[SHAREHOLDER]
       SET LOGIN_COUNT = LOGIN_COUNT + 1,
           UPDATED_AT = GETDATE()
-      WHERE SHAREHOLDER_CODE = @shareholderCode
+      WHERE [SORT] = @shareholderCode
     `
 
     await db.query(updateLoginCountQuery, { shareholderCode })

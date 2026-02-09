@@ -515,6 +515,26 @@ export default function QRCodeBatchPage() {
         flex: 0,
       },
       {
+        field: 'city1',
+        headerName: '縣市',
+        width: 80,
+        flex: 0,
+        renderCell: params => {
+          if (!params || !params.row) return <Typography variant="body2">-</Typography>
+          return <Typography variant="body2">{params.row.city1 || '-'}</Typography>
+        },
+      },
+      {
+        field: 'district1',
+        headerName: '鄉鎮區',
+        width: 80,
+        flex: 0,
+        renderCell: params => {
+          if (!params || !params.row) return <Typography variant="body2">-</Typography>
+          return <Typography variant="body2">{params.row.district1 || '-'}</Typography>
+        },
+      },
+      {
         field: 'address',
         headerName: '地址',
         flex: 1,

@@ -40,7 +40,7 @@ export async function GET(_request, { params }) {
 
     // QR Code 識別碼為 UUID，直接根據 UUID 查詢對應的股東
     const qrCodeQuery = `
-      SELECT SHAREHOLDER_CODE, NAME, ORIGINAL_ADDRESS, HOME_PHONE_1, MOBILE_PHONE_1,
+      SELECT [SORT], NAME, ORIGINAL_ADDRESS, HOME_PHONE_1, MOBILE_PHONE_1,
              UPDATED_MOBILE_PHONE_1, UUID, LOGIN_COUNT, UPDATE_COUNT
       FROM [STAGE].[dbo].[SHAREHOLDER]
       WHERE UUID = @uuid
@@ -77,7 +77,7 @@ export async function GET(_request, { params }) {
       await db.query(insertScanLogQuery, {
         logId: scanLogId,
         shareholderUuid: qrCodeShareholder.UUID,
-        shareholderCode: qrCodeShareholder.SHAREHOLDER_CODE,
+        shareholderCode: qrCodeShareholder.SORT,
         actionType: 'visit',
         verificationType: defaultVerificationType,
       })
@@ -87,7 +87,7 @@ export async function GET(_request, { params }) {
     }
 
     const responseData = {
-      shareholderCode: qrCodeShareholder.SHAREHOLDER_CODE,
+      shareholderCode: qrCodeShareholder.SORT,
       name: qrCodeShareholder.NAME,
       originalAddress: qrCodeShareholder.ORIGINAL_ADDRESS,
       originalHomePhone: qrCodeShareholder.HOME_PHONE_1 || null,

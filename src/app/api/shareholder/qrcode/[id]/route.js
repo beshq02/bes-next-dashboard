@@ -36,11 +36,11 @@ export async function GET(request, { params }) {
     let qrCodeUUID = id
     
     if (isSixDigit) {
-      // 輸入6位股東代號，根據 SHAREHOLDER_CODE 查詢 UUID
+      // 輸入6位股東代號，根據 SORT 查詢 UUID
       const query = `
-        SELECT NAME, SHAREHOLDER_CODE, UUID
+        SELECT NAME, [SORT], UUID
         FROM [STAGE].[dbo].[SHAREHOLDER]
-        WHERE SHAREHOLDER_CODE = @shareholderCode
+        WHERE [SORT] = @shareholderCode
       `
       
       const shareholders = await db.query(query, { shareholderCode: id })
@@ -66,7 +66,7 @@ export async function GET(request, { params }) {
     } else if (isUUID) {
       // 輸入 UUID，根據 UUID 查詢
       const query = `
-        SELECT NAME, SHAREHOLDER_CODE, UUID
+        SELECT NAME, [SORT], UUID
         FROM [STAGE].[dbo].[SHAREHOLDER]
         WHERE UUID = @uuid
       `
