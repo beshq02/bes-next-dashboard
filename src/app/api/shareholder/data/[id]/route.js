@@ -315,60 +315,45 @@ export async function PUT(request, { params }) {
 
     // 更新 SHAREHOLDER_LOG 記錄（如果提供了 logId）
     if (logId) {
-      const updateLogQuery = `
-        UPDATE [STAGE].[dbo].[SHAREHOLDER_LOG]
-        SET HAS_UPDATED_DATA = @hasUpdatedData,
-            UPDATED_ADDRESS = @updatedAddress,
-            UPDATED_HOME_PHONE_1 = @updatedHomePhone1,
-            UPDATED_MOBILE_PHONE_1 = @updatedMobilePhone1
-        WHERE LOG_ID = @logId AND SHAREHOLDER_CODE = @shareholderCode
-      `
+      try {
+        const updateLogQuery = `
+          UPDATE [STAGE].[dbo].[SHAREHOLDER_LOG]
+          SET HAS_UPDATED_DATA = @hasUpdatedData,
+              UPDATED_CITY = @updatedCity,
+              UPDATED_DISTRICT = @updatedDistrict,
+              UPDATED_POSTAL_CODE = @updatedPostalCode,
+              UPDATED_ADDRESS = @updatedAddress,
+              UPDATED_HOME_PHONE_1 = @updatedHomePhone1,
+              UPDATED_HOME_PHONE_2 = @updatedHomePhone2,
+              UPDATED_MOBILE_PHONE_1 = @updatedMobilePhone1,
+              UPDATED_MOBILE_PHONE_2 = @updatedMobilePhone2
+          WHERE LOG_ID = @logId AND SHAREHOLDER_CODE = @shareholderCode
+        `
 
-      // 準備日誌更新參數
-      const logUpdateParams = {
-        logId,
-        shareholderCode: id,
-        hasUpdatedData: hasDataChange ? 1 : 0,
-        updatedAddress: hasDataChange && updatedParams.updatedAddress !== undefined ? updatedParams.updatedAddress : null,
-        updatedHomePhone1: hasDataChange && updatedParams.updatedHomePhone1 !== undefined ? updatedParams.updatedHomePhone1 : null,
-        updatedMobilePhone1: hasDataChange && updatedParams.updatedMobilePhone1 !== undefined ? updatedParams.updatedMobilePhone1 : null,
+        // 準備日誌更新參數（NOT NULL 欄位使用空字串代替 null）
+        const logUpdateParams = {
+          logId,
+          shareholderCode: id,
+          hasUpdatedData: hasDataChange ? 1 : 0,
+          updatedCity: updatedParams.updatedCity !== undefined ? updatedParams.updatedCity : '',
+          updatedDistrict: updatedParams.updatedDistrict !== undefined ? updatedParams.updatedDistrict : '',
+          updatedPostalCode: updatedParams.updatedPostalCode !== undefined ? updatedParams.updatedPostalCode : '',
+          updatedAddress: updatedParams.updatedAddress !== undefined ? updatedParams.updatedAddress : '',
+          updatedHomePhone1: updatedParams.updatedHomePhone1 !== undefined ? updatedParams.updatedHomePhone1 : '',
+          updatedHomePhone2: updatedParams.updatedHomePhone2 !== undefined ? updatedParams.updatedHomePhone2 : '',
+          updatedMobilePhone1: updatedParams.updatedMobilePhone1 !== undefined ? updatedParams.updatedMobilePhone1 : '',
+          updatedMobilePhone2: updatedParams.updatedMobilePhone2 !== undefined ? updatedParams.updatedMobilePhone2 : '',
+        }
+
+        await db.query(updateLogQuery, logUpdateParams)
+      } catch (logError) {
+        // LOG 寫入失敗不影響主流程，僅記錄錯誤
+        console.error('更新 SHAREHOLDER_LOG 記錄失敗:', logError)
       }
-
-      await db.query(updateLogQuery, logUpdateParams)
     }
 
-    // 查詢更新後的資料
-    const updatedQuery = `
-      SELECT [SORT], NAME,
-             UPDATED_CITY, UPDATED_DISTRICT, UPDATED_POSTAL_CODE, UPDATED_ADDRESS,
-             UPDATED_HOME_PHONE_1, UPDATED_HOME_PHONE_2,
-             UPDATED_MOBILE_PHONE_1, UPDATED_MOBILE_PHONE_2,
-             LOGIN_COUNT, UPDATE_COUNT, UPDATED_AT
-      FROM [STAGE].[dbo].[SHAREHOLDER]
-      WHERE [SORT] = @shareholderCode
-    `
-
-    const updatedData = await db.query(updatedQuery, { shareholderCode: id })
-    const updated = updatedData[0]
-
-    const responseData = {
-      shareholderCode: updated.SORT,
-      name: updated.NAME,
-      updatedCity: updated.UPDATED_CITY || null,
-      updatedDistrict: updated.UPDATED_DISTRICT || null,
-      updatedPostalCode: updated.UPDATED_POSTAL_CODE || null,
-      updatedAddress: updated.UPDATED_ADDRESS || null,
-      updatedHomePhone1: updated.UPDATED_HOME_PHONE_1 || null,
-      updatedHomePhone2: updated.UPDATED_HOME_PHONE_2 || null,
-      updatedMobilePhone1: updated.UPDATED_MOBILE_PHONE_1 || null,
-      updatedMobilePhone2: updated.UPDATED_MOBILE_PHONE_2 || null,
-      loginCount: updated.LOGIN_COUNT || 0,
-      updateCount: updated.UPDATE_COUNT || 0,
-      updatedAt: updated.UPDATED_AT,
-    }
-    
     return NextResponse.json(
-      createSuccessResponse(responseData, '資料更新成功'),
+      createSuccessResponse({ shareholderCode: id }, '資料更新成功'),
       { status: 200 }
     )
   } catch (error) {

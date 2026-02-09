@@ -391,11 +391,11 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
           </p>
           <p style={{ margin: '0 0 0.75em 0' }}>
             感謝您長期以來對中華工程的信任與支持！為督促我們企業能更正向的發展，請您協助
-            <strong>填寫問卷</strong>，我們後續將寄發<strong>7-11 100元禮券</strong>
+            <strong>填寫問卷</strong>，我們後續將寄發<strong>7-11 100元商品券</strong>
             以為感謝！
           </p>
           <p style={{ margin: 0 }}>
-            為確保禮券能順利寄送，請在填寫問券前確認以下資料並更新您的聯絡地址及電話號碼。
+            為確保商品券能順利寄送，請在填寫問券前確認以下資料並更新您的聯絡地址及電話號碼。
           </p>
         </Typography>
       </Box>

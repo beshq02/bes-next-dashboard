@@ -8,9 +8,10 @@
 'use client'
 
 import Image from 'next/image'
-import { Box, Button, Card, CardContent, Divider, Typography } from '@mui/material'
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
+
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
+import { Box, Card, Button, Divider, Typography, CardContent } from '@mui/material'
 
 const ESG_FORM_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSdfLw7UCncd1lh1USTnjpQ1OCc06HScZns0xkXGCN_1PViKHg/viewform'
@@ -120,7 +121,8 @@ export default function ThankYouPage() {
                   color: '#1976d2',
                 }}
               >
-                {' '}7-ELEVEN 100 元禮券{' '}
+                {' '}
+                7-ELEVEN 100 元商品券{' '}
               </Box>
               以表感謝。
             </Typography>
