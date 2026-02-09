@@ -1,5 +1,4 @@
 'use client'
-import Image from 'next/image'
 import { X } from 'lucide-react'
 import { Fragment, useState } from 'react'
 import { SIZE, COLOR, OFFSET } from '@/config-global'
@@ -8,8 +7,8 @@ import {
   Dialog,
   DialogTitle,
   DialogPortal,
-  DialogContent,
   DialogOverlay,
+  DialogPrimitive,
 } from '@/components/ui/dialog'
 
 import { useTheme } from '@mui/material/styles'
@@ -21,6 +20,18 @@ import { useFontSize } from '../context/useFontSize'
 import TableWrapper from '../components/TableWrapper'
 import TableDataCell from '../components/TableDataCell'
 import TableBodyNodata from '../components/TableBodyNodata'
+
+/**
+ * 將 cpm2 的 FILE_URL 轉換為本地代理 URL
+ * 原始: https://cpm2.bes.com.tw/Week/File/GetWkFile?fileId=9935
+ * 代理: /api/file/9935
+ */
+function toProxyUrl(fileUrl) {
+  if (!fileUrl) return fileUrl
+  const match = fileUrl.match(/[?&]fileId=(\d+)/)
+  if (match) return `/api/file/${match[1]}`
+  return fileUrl
+}
 
 export default function File({ data, is102B1A = false }) {
   const theme = useTheme()
@@ -44,35 +55,37 @@ export default function File({ data, is102B1A = false }) {
 
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
         <DialogPortal>
-          <DialogOverlay className="z-[9999] bg-black/90 backdrop-blur-sm" />
-          <DialogContent
-            className="z-[9999] flex h-screen max-h-none w-screen max-w-none items-center justify-center border-none bg-transparent p-0"
+          <DialogOverlay className="z-[9999] bg-black/90 backdrop-blur-sm duration-0 data-[state=closed]:animate-none data-[state=open]:animate-none" />
+          <DialogPrimitive.Content
+            className="fixed inset-0 z-[9999] h-dvh max-h-none w-dvw max-w-none translate-x-0 translate-y-0 border-none bg-transparent p-0 shadow-none sm:rounded-none"
             onPointerDownOutside={() => setLightboxOpen(false)}
           >
-            <button
-              onClick={() => setLightboxOpen(false)}
-              className="absolute right-4 top-4 z-[10000] rounded-full bg-white/10 p-2 transition-colors hover:bg-white/20"
-            >
-              <X className="size-6 text-white" />
-            </button>
-
             <DialogTitle className="sr-only">
               {selectedImage ? `圖片：${selectedImage.PIC_TYPE_CH}` : '圖片檢視器'}
             </DialogTitle>
 
             {selectedImage && (
-              <div className="relative flex size-full items-center justify-center p-8">
-                <Image
-                  src={selectedImage.FILE_URL}
+              <div className="absolute inset-0 size-full" style={{ zIndex: 0 }}>
+                <img
+                  src={toProxyUrl(selectedImage.FILE_URL)}
                   alt={selectedImage.PIC_TYPE_CH}
-                  fill
-                  className="object-contain"
-                  sizes="100vw"
-                  priority
+                  className="size-full object-contain"
                 />
               </div>
             )}
-          </DialogContent>
+
+            <div className="pointer-events-none absolute inset-0" style={{ zIndex: 1 }}>
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(false)}
+                className="pointer-events-auto absolute right-4 top-4 rounded-full bg-white/20 p-2 hover:bg-white/30"
+                style={{ zIndex: 1 }}
+                aria-label="關閉"
+              >
+                <X className="size-6 text-white" />
+              </button>
+            </div>
+          </DialogPrimitive.Content>
         </DialogPortal>
       </Dialog>
     </>
@@ -117,17 +130,15 @@ export default function File({ data, is102B1A = false }) {
                       onClick={() => handleImageClick(item)}
                       className="cursor-pointer transition-opacity hover:opacity-90"
                     >
-                      <Image
-                        src={item.FILE_URL}
+                      <img
+                        src={toProxyUrl(item.FILE_URL)}
                         alt={item.PIC_TYPE_CH}
-                        width={2400}
-                        height={1600}
                         style={{
+                          width: '100%',
                           objectFit: 'contain',
                           border: '1px solid #e0e0e0',
                           borderRadius: '8px',
                         }}
-                        className="w-full object-contain"
                       />
                     </div>
                   </TableCell>
@@ -136,7 +147,7 @@ export default function File({ data, is102B1A = false }) {
                 ) : item.FILE_TYPE === 'pdf' ? (
                   <TableCell sx={{ p: 0 }}>
                     <iframe
-                      src={`${item.FILE_URL}#view=FitH`}
+                      src={`${toProxyUrl(item.FILE_URL)}#view=FitH`}
                       style={{
                         width: '100%',
                         height: isXs ? '100%' : '835px',
@@ -149,7 +160,7 @@ export default function File({ data, is102B1A = false }) {
                 ) : item.FILE_TYPE === 'doc' || item.FILE_TYPE === 'docx' ? (
                   <TableCell sx={{ p: 0 }}>
                     <iframe
-                      src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(item.FILE_URL)}&wdStartOn=1&wdEmbedCode=0&wdAllowInteractivity=False&wdPrint=1&wdDownloadButton=1&wdFitPage=True`}
+                      src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(toProxyUrl(item.FILE_URL))}&wdStartOn=1&wdEmbedCode=0&wdAllowInteractivity=False&wdPrint=1&wdDownloadButton=1&wdFitPage=True`}
                       style={{
                         width: '100%',
                         height: isXs ? '400px' : '835px',
