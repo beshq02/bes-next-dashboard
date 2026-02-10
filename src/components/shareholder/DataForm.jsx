@@ -122,49 +122,29 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
     }
   }, [shareholderData])
 
-  // 即時驗證函數
+  // 即時驗證函數（僅格式驗證，所有欄位皆為選填）
   const validateField = (fieldName, value) => {
     const trimmedValue = (value || '').trim()
 
     switch (fieldName) {
       case 'city':
-        if (!trimmedValue) {
-          setCityError('請選擇縣市')
-          return false
-        }
         setCityError('')
         return true
 
       case 'district':
-        if (!trimmedValue) {
-          setDistrictError('請選擇鄉鎮市區')
-          return false
-        }
         setDistrictError('')
         return true
 
       case 'address':
-        if (!trimmedValue) {
-          setAddressError('請輸入地址')
-          return false
-        }
         setAddressError('')
         return true
 
       case 'homePhone1':
-        if (!trimmedValue) {
-          setHomePhone1Error('請輸入住家電話')
-          return false
-        }
         setHomePhone1Error('')
         return true
 
       case 'mobilePhone1':
-        if (!trimmedValue) {
-          setMobilePhone1Error('請輸入手機號碼')
-          return false
-        }
-        if (!/^09\d{8}$/.test(trimmedValue)) {
+        if (trimmedValue && !/^09\d{8}$/.test(trimmedValue)) {
           setMobilePhone1Error('手機號碼格式錯誤')
           return false
         }
@@ -246,34 +226,23 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
     setMobilePhone2(value)
   }
 
-  // 驗證所有必填欄位
-  const validateAllRequired = () => {
-    const isValidCity = validateField('city', city)
-    const isValidDistrict = validateField('district', district)
-    const isValidAddress = validateField('address', address)
-    const isValidHomePhone1 = validateField('homePhone1', homePhone1)
+  // 驗證所有欄位（僅格式驗證，無必填檢查）
+  const validateAllFields = () => {
     const isValidMobilePhone1 = validateField('mobilePhone1', mobilePhone1)
 
-    // 標記所有欄位為已觸碰
     setTouchedFields({
-      city: true,
-      district: true,
-      address: true,
-      homePhone1: true,
       mobilePhone1: true,
     })
 
-    return (
-      isValidCity && isValidDistrict && isValidAddress && isValidHomePhone1 && isValidMobilePhone1
-    )
+    return isValidMobilePhone1
   }
 
   // 處理表單提交
   const handleSubmit = async e => {
     e.preventDefault()
 
-    // 驗證所有必填欄位
-    if (!validateAllRequired()) {
+    // 驗證欄位格式
+    if (!validateAllFields()) {
       return
     }
 
@@ -447,7 +416,6 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                 <FormControl
                   fullWidth
                   size="small"
-                  required
                   error={!!cityError && touchedFields.city}
                   sx={textFieldSx}
                 >
@@ -458,7 +426,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                     onChange={handleCityChange}
                     onBlur={() => handleBlur('city')}
                     sx={{ borderRadius: '8px', backgroundColor: '#fff' }}
-                    inputProps={{ 'aria-label': '縣市', 'aria-required': 'true' }}
+                    inputProps={{ 'aria-label': '縣市' }}
                   >
                     {Object.keys(areaData).map(cityName => (
                       <MenuItem key={cityName} value={cityName}>
@@ -474,7 +442,6 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                 <FormControl
                   fullWidth
                   size="small"
-                  required
                   error={!!districtError && touchedFields.district}
                   sx={textFieldSx}
                 >
@@ -486,7 +453,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                     onBlur={() => handleBlur('district')}
                     disabled={!city || !areaData[city]}
                     sx={{ borderRadius: '8px', backgroundColor: '#fff' }}
-                    inputProps={{ 'aria-label': '鄉鎮市區', 'aria-required': 'true' }}
+                    inputProps={{ 'aria-label': '鄉鎮市區' }}
                   >
                     {(areaData[city] || []).map(districtName => (
                       <MenuItem key={districtName} value={districtName}>
@@ -508,14 +475,12 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                 onBlur={() => handleBlur('address')}
                 error={!!addressError && touchedFields.address}
                 helperText={touchedFields.address && addressError ? addressError : ''}
-                required
                 fullWidth
                 variant="outlined"
                 size="small"
                 sx={textFieldSx}
                 inputProps={{
                   'aria-label': '詳細地址',
-                  'aria-required': 'true',
                 }}
               />
             </Box>
@@ -547,7 +512,6 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                   onBlur={() => handleBlur('homePhone1')}
                   error={!!homePhone1Error && touchedFields.homePhone1}
                   helperText={touchedFields.homePhone1 && homePhone1Error ? homePhone1Error : ''}
-                  required
                   fullWidth
                   variant="outlined"
                   size="small"
@@ -556,7 +520,6 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                     maxLength: 20,
                     inputMode: 'tel',
                     'aria-label': '住家電話1',
-                    'aria-required': 'true',
                   }}
                 />
                 <TextField
@@ -606,7 +569,6 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                   helperText={
                     touchedFields.mobilePhone1 && mobilePhone1Error ? mobilePhone1Error : ''
                   }
-                  required
                   fullWidth
                   variant="outlined"
                   size="small"
@@ -616,7 +578,6 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                     inputMode: 'numeric',
                     pattern: '[0-9]{10}',
                     'aria-label': '手機號碼1',
-                    'aria-required': 'true',
                   }}
                 />
                 <TextField

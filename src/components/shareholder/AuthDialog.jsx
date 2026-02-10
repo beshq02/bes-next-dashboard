@@ -2,7 +2,7 @@
  * 身份驗證對話框組件
  * 使用 MUI Dialog、shadcn/ui Input OTP、Button 元件
  * 遵循 Material Design 3.0 和文檔規範
- * 
+ *
  * 支援兩種驗證模式：
  * 1. 手機驗證碼驗證（當股東資料中有手機號碼時）
  * 2. 身分證末四碼驗證（當股東資料中沒有手機號碼時）
@@ -29,7 +29,10 @@ import { validateIdLastFour, validateVerificationCode } from '@/lib/validation'
 // 測試模式：從環境變數讀取（前端需要使用 NEXT_PUBLIC_ 前綴）
 // 設定方式：在 .env 檔案中設定 NEXT_PUBLIC_TESTMODE=true 或 NEXT_PUBLIC_TESTMODE=false
 // 或設定 NEXT_PUBLIC_TESTMODE=1（測試模式）或 NEXT_PUBLIC_TESTMODE=0（正式模式）
-const isTestMode = process.env.NEXT_PUBLIC_TESTMODE === 'true' || process.env.NEXT_PUBLIC_TESTMODE === '1' || process.env.NEXT_PUBLIC_TESTMODE === undefined
+const isTestMode =
+  process.env.NEXT_PUBLIC_TESTMODE === 'true' ||
+  process.env.NEXT_PUBLIC_TESTMODE === '1' ||
+  process.env.NEXT_PUBLIC_TESTMODE === undefined
 
 export default function AuthDialog({
   open,
@@ -51,7 +54,7 @@ export default function AuthDialog({
   const [sendingCode, setSendingCode] = useState(false) // 發送驗證碼中
   const [error, setError] = useState(null)
   const [errorType, setErrorType] = useState(null)
-  const [contactInfo] = useState('電話：028787-6260 | 電子郵件：226155@bes.com.tw')
+  const [contactInfo] = useState('')
   const [shake, setShake] = useState(false)
   const [expiresAt, setExpiresAt] = useState(null) // 驗證碼過期時間
   const [remainingSeconds, setRemainingSeconds] = useState(null) // 剩餘秒數
@@ -62,8 +65,14 @@ export default function AuthDialog({
   // 監聽驗證碼變化，當輸入滿 4 碼時自動觸發驗證
   useEffect(() => {
     const codeLength = verificationCode ? verificationCode.length : 0
-    const shouldTrigger = hasSentCode && codeLength === 4 && !loading && verificationMode === 'phone' && qrCodeIdentifier && phoneNumber
-    
+    const shouldTrigger =
+      hasSentCode &&
+      codeLength === 4 &&
+      !loading &&
+      verificationMode === 'phone' &&
+      qrCodeIdentifier &&
+      phoneNumber
+
     console.log('🔍 useEffect 檢查:', {
       hasSentCode: String(hasSentCode),
       verificationCode: String(verificationCode),
@@ -72,9 +81,9 @@ export default function AuthDialog({
       verificationMode: String(verificationMode),
       qrCodeIdentifier: String(qrCodeIdentifier),
       phoneNumber: String(phoneNumber),
-      shouldTrigger: String(shouldTrigger)
+      shouldTrigger: String(shouldTrigger),
     })
-    
+
     if (shouldTrigger) {
       console.log('✅ useEffect 觸發驗證:', verificationCode)
       // 使用 setTimeout 確保 state 更新完成後再觸發驗證
@@ -175,7 +184,7 @@ export default function AuthDialog({
   }, [hasSentCode, expiresAt, verificationMode])
 
   // 發送驗證碼
-  const sendVerificationCode = async (phone) => {
+  const sendVerificationCode = async phone => {
     if (!qrCodeIdentifier || !phone) return
 
     setSendingCode(true)
@@ -204,7 +213,7 @@ export default function AuthDialog({
 
       // 發送成功，切換到輸入驗證碼畫面
       setHasSentCode(true)
-      
+
       // 記錄產生的驗證碼（僅測試模式才記錄，正式模式不顯示）
       if (isTestMode && data?.data?.verificationCode) {
         setGeneratedCode(data.data.verificationCode)
@@ -213,7 +222,7 @@ export default function AuthDialog({
         // 正式模式：清除驗證碼，不顯示在畫面上
         setGeneratedCode(null)
       }
-      
+
       // 記錄過期時間（從 API 回應取得，或計算 1 分鐘後）
       if (data?.data?.expiresAt) {
         setExpiresAt(data.data.expiresAt)
@@ -381,7 +390,7 @@ export default function AuthDialog({
   }
 
   // 處理手機驗證碼變更
-  const handleVerificationCodeChange = (value) => {
+  const handleVerificationCodeChange = value => {
     if (loading) return
 
     // input-otp 的 onChange 應該接收字符串，但為了安全起見，處理各種情況
@@ -397,13 +406,13 @@ export default function AuthDialog({
     const numericOnly = codeValue.replace(/\D/g, '')
     const filteredValue = numericOnly.slice(0, 4)
 
-    console.log('🔍 驗證碼輸入變更:', { 
-      originalValue: value, 
-      codeValue, 
-      numericOnly, 
-      filteredValue, 
+    console.log('🔍 驗證碼輸入變更:', {
+      originalValue: value,
+      codeValue,
+      numericOnly,
+      filteredValue,
       length: filteredValue.length,
-      type: typeof value
+      type: typeof value,
     })
 
     setVerificationCode(filteredValue)
@@ -419,7 +428,7 @@ export default function AuthDialog({
   }
 
   // 處理身分證末四碼變更
-  const handleIdNumberChange = (value) => {
+  const handleIdNumberChange = value => {
     if (loading) return
 
     const numericOnly = value.replace(/\D/g, '')
@@ -440,7 +449,7 @@ export default function AuthDialog({
     }
   }
 
-  const triggerShakeAndClear = (mode) => {
+  const triggerShakeAndClear = mode => {
     if (mode === 'phone') {
       setVerificationCode('')
     } else {
@@ -463,9 +472,9 @@ export default function AuthDialog({
   useEffect(() => {
     if (showSuccessAnimation && !animationData) {
       fetch('/animations/success.json')
-        .then((res) => res.json())
-        .then((data) => setAnimationData(data))
-        .catch((err) => {
+        .then(res => res.json())
+        .then(data => setAnimationData(data))
+        .catch(err => {
           console.error('載入動畫失敗:', err)
           // 如果載入失敗，直接呼叫 onSuccess
           if (onSuccess && verificationData) {
@@ -817,7 +826,7 @@ export default function AuthDialog({
       }}
     >
       <form
-        onSubmit={(e) => {
+        onSubmit={e => {
           e.preventDefault()
           if (!loading) {
             if (verificationMode === 'phone') {

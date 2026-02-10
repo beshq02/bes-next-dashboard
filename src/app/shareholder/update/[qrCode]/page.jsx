@@ -13,7 +13,7 @@ import Image from 'next/image'
 import AuthDialog from '@/components/shareholder/AuthDialog'
 import DataForm from '@/components/shareholder/DataForm'
 import ErrorMessage from '@/components/shareholder/ErrorMessage'
-import { Box, CircularProgress, Typography, AppBar, Toolbar } from '@mui/material'
+import { Box, CircularProgress, Typography } from '@mui/material'
 
 export default function ShareholderUpdatePage() {
   const params = useParams()
@@ -144,44 +144,85 @@ export default function ShareholderUpdatePage() {
     console.error('身份驗證失敗 (由 AuthDialog 處理):', errorMessage)
   }
 
-  // 渲染導覽列（所有狀態下都顯示）
+  // 渲染導覽列（與 AuthDialog 深色頂部區塊一致）
   const renderNavBar = () => (
-    <AppBar
-      position="static"
-      elevation={4}
+    <Box
       sx={{
-        backgroundColor: 'background.paper',
-        color: 'text.primary',
+        background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+        color: '#fff',
+        px: { xs: 2, sm: 4 },
+        pt: { xs: 3, sm: 4 },
+        pb: { xs: 3, sm: 4 },
       }}
     >
-      <Toolbar
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2, // 文檔規範：gap md (16px)
-          minHeight: '64px', // 文檔規範：高度 64px
-        }}
+      {/* Logo + 公司名稱 */}
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        gap={1.5}
+        sx={{ mb: 1.5 }}
       >
-        <Image
-          src="/logo.png"
-          alt="中華工程股份有限公司 Logo"
-          width={48}
-          height={48}
-          style={{ objectFit: 'contain' }}
-        />
+        <Box
+          sx={{
+            width: { xs: 40, sm: 48 },
+            height: { xs: 40, sm: 48 },
+            borderRadius: '10px',
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Image
+            src="/logo.png"
+            alt="中華工程股份有限公司 Logo"
+            width={32}
+            height={32}
+            style={{ objectFit: 'contain' }}
+          />
+        </Box>
         <Typography
           variant="h5"
           component="h1"
           sx={{
-            fontSize: 'clamp(10px, 3.5vw, 20px)',
-            fontWeight: 500,
+            fontSize: { xs: '18px', sm: '22px' },
+            fontWeight: 700,
             whiteSpace: 'nowrap',
+            color: '#fff',
+            letterSpacing: '0.5px',
           }}
         >
-          中華工程股份有限公司114年ESG利害關係人問卷
+          中華工程股份有限公司
         </Typography>
-      </Toolbar>
-    </AppBar>
+      </Box>
+      {/* 分隔線 */}
+      <Box
+        sx={{
+          width: 40,
+          height: 3,
+          borderRadius: 2,
+          backgroundColor: '#0369A1',
+          mx: 'auto',
+          mb: 1.5,
+        }}
+      />
+      {/* 主要標題 */}
+      <Typography
+        variant="h6"
+        component="div"
+        align="center"
+        sx={{
+          fontSize: { xs: '20px', sm: '24px' },
+          fontWeight: 600,
+          color: 'rgba(255,255,255,0.9)',
+          letterSpacing: '1px',
+        }}
+      >
+        114 年 ESG 利害關係人問卷
+      </Typography>
+    </Box>
   )
 
   if (loading) {
@@ -189,6 +230,8 @@ export default function ShareholderUpdatePage() {
       <Box
         sx={{
           minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
           backgroundColor: '#f5f5f5',
         }}
       >
@@ -197,7 +240,7 @@ export default function ShareholderUpdatePage() {
           display="flex"
           justifyContent="center"
           alignItems="center"
-          minHeight="calc(100vh - 64px)"
+          sx={{ flex: 1 }}
         >
           <CircularProgress />
         </Box>
@@ -210,6 +253,8 @@ export default function ShareholderUpdatePage() {
       <Box
         sx={{
           minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
           backgroundColor: '#f5f5f5',
         }}
       >
@@ -219,8 +264,7 @@ export default function ShareholderUpdatePage() {
           flexDirection="column"
           justifyContent="center"
           alignItems="center"
-          minHeight="calc(100vh - 64px)"
-          sx={{ padding: { xs: 1, sm: 3 } }}
+          sx={{ flex: 1, padding: { xs: 1, sm: 3 } }}
         >
           <ErrorMessage code={error.code} message={error.message} contactInfo={error.contactInfo} />
         </Box>

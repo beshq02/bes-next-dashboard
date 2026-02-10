@@ -122,7 +122,7 @@ export default function ThankYouPage() {
                 }}
               >
                 {' '}
-                7-ELEVEN 100 元商品券{' '}
+                7-11 超商 100 元商品券{' '}
               </Box>
               以表感謝。
             </Typography>

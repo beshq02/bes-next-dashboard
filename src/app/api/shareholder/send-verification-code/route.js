@@ -20,10 +20,8 @@ const VERIFICATION_CODE_EXPIRY = 1 * 60 * 1000 // 1分鐘（毫秒）
 // 或設定 TESTMODE=1（測試模式）或 TESTMODE=0（正式模式）
 const isTestMode = process.env.TESTMODE === 'true' || process.env.TESTMODE === '1' || process.env.TESTMODE === undefined
 
-// 重新發送間隔
-// 測試模式：0 秒（允許立即重新發送）
-// 正式模式：1 分鐘
-const RESEND_COOLDOWN = isTestMode ? 0 : 1 * 60 * 1000
+// 重新發送間隔：60 秒
+const RESEND_COOLDOWN = 60 * 1000
 
 /**
  * 產生 4 位數字驗證碼

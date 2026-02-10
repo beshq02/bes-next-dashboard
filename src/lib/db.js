@@ -10,6 +10,7 @@ const sqlConfig = {
   options: {
     encrypt: true,
     trustServerCertificate: true,
+    useUTC: false, // 讓 mssql 驅動以本地時間（UTC+8）解讀 GETDATE()，避免時區偏移
   },
   // 添加連接和請求超時設定
   pool: {
