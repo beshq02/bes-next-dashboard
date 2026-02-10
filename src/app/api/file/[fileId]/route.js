@@ -15,7 +15,7 @@ import os from 'os'
 import db from '@/lib/db'
 
 const IS_WINDOWS = os.platform() === 'win32'
-const NAS_SERVER = 'nas109'
+const NAS_SERVER = process.env.NAS_SERVER || 'nas109'
 const NAS_SHARE_NAME = 'ENG_Public'
 const NAS_SUB_PATH = 'ERP_prj/week_temp'
 
