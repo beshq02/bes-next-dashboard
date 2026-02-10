@@ -24,7 +24,11 @@ const NAS_WIN_SHARE = `\\\\${NAS_SERVER}\\${NAS_SHARE_NAME}`
 const NAS_WIN_BASE = `\\\\${NAS_SERVER}\\${NAS_SHARE_NAME}\\${NAS_SUB_PATH.replace(/\//g, '\\')}`
 
 // 如有設定 NAS_FILE_PATH 就優先用（支援已掛載的情境）
-const NAS_FILE_PATH = process.env.NAS_FILE_PATH || (IS_WINDOWS ? NAS_WIN_BASE : null)
+// 在 Linux 上若 NAS_FILE_PATH 是 Windows UNC 路徑（\\開頭），則忽略它，改用 smbclient
+const rawNasPath = process.env.NAS_FILE_PATH
+const NAS_FILE_PATH = (rawNasPath && !(rawNasPath.startsWith('\\\\') && !IS_WINDOWS))
+  ? rawNasPath
+  : (IS_WINDOWS ? NAS_WIN_BASE : null)
 
 const EXT_CONTENT_TYPE = {
   '.pdf': 'application/pdf',
