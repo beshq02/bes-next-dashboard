@@ -3,6 +3,7 @@
  * POST /api/shareholder/send-verification-code
  *
  * 發送手機驗證碼至股東的手機號碼
+ * 冷卻機制改用 DB（SHAREHOLDER_LOG.ACTION_TIME）檢查，支援多 instance 環境
  */
 
 import { NextResponse } from 'next/server'
@@ -10,10 +11,6 @@ import { createErrorByCode, createSuccessResponse, ERROR_CODES } from '@/lib/err
 import db from '@/lib/db'
 import { sendSMS } from '@/lib/sms'
 import crypto from 'crypto'
-
-// 用於暫存驗證碼的 Map（生產環境應使用 Redis）
-// 注意：此 Map 在模組層級，與 verify route 中的不同，需要共用時應使用 Redis
-export const verificationCodeStore = new Map()
 
 // 驗證碼有效期（1分鐘）
 const VERIFICATION_CODE_EXPIRY = 1 * 60 * 1000 // 1分鐘（毫秒）
@@ -97,40 +94,46 @@ export async function POST(request) {
       )
     }
 
-    // 檢查重新發送間隔（10分鐘冷卻時間）
-    const storeKey = `${qrCodeIdentifier}_${phoneNumber}`
-    const existingRecord = verificationCodeStore.get(storeKey)
-    
-    if (existingRecord && existingRecord.sentAt) {
-      const timeSinceLastSend = Date.now() - existingRecord.sentAt.getTime()
-      if (timeSinceLastSend < RESEND_COOLDOWN) {
-        const remainingSeconds = Math.ceil((RESEND_COOLDOWN - timeSinceLastSend) / 1000)
-        const remainingMinutes = Math.floor(remainingSeconds / 60)
-        const remainingSecs = remainingSeconds % 60
-        const timeMessage = remainingMinutes > 0 
-          ? `${remainingMinutes} 分 ${remainingSecs} 秒`
-          : `${remainingSecs} 秒`
-        return NextResponse.json(
-          createErrorByCode(ERROR_CODES.INTERNAL_SERVER_ERROR, `請於 ${timeMessage} 後再次發送驗證碼`),
-          { status: 429 }
-        )
+    // 檢查重新發送間隔（從 DB 查詢最近一次發送時間）
+    if (RESEND_COOLDOWN > 0) {
+      const cooldownQuery = `
+        SELECT TOP 1 ACTION_TIME
+        FROM [STAGE].[dbo].[SHAREHOLDER_LOG]
+        WHERE SHAREHOLDER_UUID = @shareholderUuid
+          AND PHONE_NUMBER_USED = @phoneNumber
+          AND VERIFICATION_TYPE = 'phone'
+          AND ACTION_TYPE = 'verify'
+        ORDER BY ACTION_TIME DESC
+      `
+      const cooldownResult = await db.query(cooldownQuery, {
+        shareholderUuid: shareholder.UUID,
+        phoneNumber,
+      })
+
+      if (cooldownResult && cooldownResult.length > 0 && cooldownResult[0].ACTION_TIME) {
+        const lastSendTime = new Date(cooldownResult[0].ACTION_TIME)
+        const timeSinceLastSend = Date.now() - lastSendTime.getTime()
+        if (timeSinceLastSend < RESEND_COOLDOWN) {
+          const remainingSeconds = Math.ceil((RESEND_COOLDOWN - timeSinceLastSend) / 1000)
+          const remainingMinutes = Math.floor(remainingSeconds / 60)
+          const remainingSecs = remainingSeconds % 60
+          const timeMessage = remainingMinutes > 0
+            ? `${remainingMinutes} 分 ${remainingSecs} 秒`
+            : `${remainingSecs} 秒`
+          return NextResponse.json(
+            createErrorByCode(ERROR_CODES.INTERNAL_SERVER_ERROR, `請於 ${timeMessage} 後再次發送驗證碼`),
+            { status: 429 }
+          )
+        }
       }
     }
 
     // 產生 4 位數字驗證碼
     const verificationCode = generateVerificationCode()
-    
-    // 儲存驗證碼（key: qrCodeIdentifier_phoneNumber, value: { code, expiresAt, sentAt, shareholderCode }）
+
     const expiresAt = new Date(Date.now() + VERIFICATION_CODE_EXPIRY)
-    const sentAt = new Date()
-    
-    verificationCodeStore.set(storeKey, {
-      code: verificationCode,
-      expiresAt,
-      sentAt, // 記錄發送時間，用於檢查冷卻時間
-      shareholderCode: shareholder.SORT,
-    })
-    console.log(`[儲存驗證碼] storeKey: "${storeKey}", verificationCode: "${verificationCode}", type: ${typeof verificationCode}`)
+
+    console.log(`[發送驗證碼] shareholderCode: "${shareholder.SORT}", verificationCode: "${verificationCode}"`)
 
     // 根據測試模式決定是否發送簡訊
     const message = `【中華工程系統簡訊】親愛的股東您好，您的驗證碼是：${verificationCode}，請於1分鐘內驗證。`
@@ -147,7 +150,7 @@ export async function POST(request) {
       smsResult = await sendSMS(message, phoneNumber, {
         subject: '股東資料驗證碼',
       })
-      
+
       if (!smsResult.success) {
         console.error('簡訊發送失敗:', smsResult.message)
         return NextResponse.json(
@@ -229,36 +232,4 @@ export async function POST(request) {
       { status: 500 }
     )
   }
-}
-
-/**
- * 驗證驗證碼是否正確（供其他模組使用）
- * @param {string} qrCodeIdentifier - QR Code 識別碼
- * @param {string} phoneNumber - 手機號碼
- * @param {string} code - 驗證碼
- * @returns {object} { valid: boolean, shareholderCode: string | null, error: string }
- */
-export function verifyCode(qrCodeIdentifier, phoneNumber, code) {
-  const storeKey = `${qrCodeIdentifier}_${phoneNumber}`
-  const stored = verificationCodeStore.get(storeKey)
-
-  if (!stored) {
-    return { valid: false, shareholderCode: null, error: '驗證碼不存在' }
-  }
-
-  // 檢查是否過期
-  if (new Date() > stored.expiresAt) {
-    verificationCodeStore.delete(storeKey)
-    return { valid: false, shareholderCode: null, error: '驗證碼已過期' }
-  }
-
-  // 檢查驗證碼是否正確
-  if (stored.code !== code) {
-    return { valid: false, shareholderCode: null, error: '驗證碼錯誤' }
-  }
-
-  // 驗證成功，刪除驗證碼（一次性使用）
-  verificationCodeStore.delete(storeKey)
-
-  return { valid: true, shareholderCode: stored.shareholderCode, error: null }
 }

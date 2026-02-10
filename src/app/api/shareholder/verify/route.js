@@ -207,7 +207,7 @@ export async function POST(request) {
       const qrCodeQuery = `
         SELECT [SORT], UUID, NAME, ORIGINAL_ADDRESS,
                COALESCE(UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1, '') AS PHONE,
-               UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1
+               UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1, ID_LAST_FOUR
         FROM [STAGE].[dbo].[SHAREHOLDER]
         WHERE UUID = @uuid
       `
@@ -229,6 +229,7 @@ export async function POST(request) {
         phone: qrCodeShareholders[0].PHONE,
         updated_mobile_phone: qrCodeShareholders[0].UPDATED_MOBILE_PHONE_1,
         original_mobile_phone: qrCodeShareholders[0].MOBILE_PHONE_1,
+        id_last_four: qrCodeShareholders[0].ID_LAST_FOUR,
       }
     } else {
       return NextResponse.json(
@@ -352,43 +353,17 @@ export async function POST(request) {
       isVerified = true
     } else if (verificationType === 'id') {
       // 身分證末四碼驗證
-      // 查詢身分證末四碼對應的股東（可能重複，需再與 QR Code 檢查碼比對）
-      const idLastFourQuery = `
-        SELECT [SORT], UUID, NAME, ORIGINAL_ADDRESS,
-               COALESCE(UPDATED_MOBILE_PHONE_1, MOBILE_PHONE_1, '') AS PHONE
-        FROM [STAGE].[dbo].[SHAREHOLDER]
-        WHERE ID_LAST_FOUR = @idLastFour
-      `
+      // 直接用 UUID 查到的股東 ID_LAST_FOUR 與使用者輸入比對
+      const storedIdLastFour = qrCodeShareholder.id_last_four
+      const inputIdLastFour = String(idLastFour || '').trim()
 
-      const idLastFourShareholders = await db.query(idLastFourQuery, { idLastFour })
-
-      if (!idLastFourShareholders || idLastFourShareholders.length === 0) {
+      if (!storedIdLastFour || storedIdLastFour !== inputIdLastFour) {
         // 驗證失敗，如果沒有 scanLogId 才建立 log（相容舊流程）
         if (!scanLogId) {
           await updateOrInsertVerificationLog(false)
         }
         return NextResponse.json(
           createErrorByCode(ERROR_CODES.AUTHENTICATION_FAILED, '請確認身分證末四碼'),
-          { status: 401 }
-        )
-      }
-
-      const idLastFourShareholder = {
-        shareholder_code: idLastFourShareholders[0].SORT,
-        uuid: idLastFourShareholders[0].UUID,
-        name: idLastFourShareholders[0].NAME,
-        address: idLastFourShareholders[0].ORIGINAL_ADDRESS,
-        phone: idLastFourShareholders[0].PHONE,
-      }
-
-      // 比對兩個查詢結果是否為同一股東（使用 shareholder_code 比對）
-      if (qrCodeShareholder.shareholder_code !== idLastFourShareholder.shareholder_code) {
-        // 驗證失敗，如果沒有 scanLogId 才建立 log（相容舊流程）
-        if (!scanLogId) {
-          await updateOrInsertVerificationLog(false)
-        }
-        return NextResponse.json(
-          createErrorByCode(ERROR_CODES.AUTHENTICATION_FAILED, '請掃描信件上的 QR Code'),
           { status: 401 }
         )
       }

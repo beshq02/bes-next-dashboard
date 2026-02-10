@@ -13,8 +13,8 @@ const sqlConfig = {
   },
   // 添加連接和請求超時設定
   pool: {
-    max: 10,
-    min: 0,
+    max: 50,
+    min: 5,
     idleTimeoutMillis: 30000,
   },
   requestTimeout: 30000, // 設定請求超時為 30 秒

@@ -17,7 +17,9 @@
       "Bash(dir:*)",
       "mcp__mssqlSTAGE__create_table",
       "Bash(pip show:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(npm install:*)",
+      "Bash(npx jest:*)"
     ]
   }
 }
