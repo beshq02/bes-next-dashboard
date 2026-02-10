@@ -2,18 +2,29 @@
  * 圖片代理 API — 直接從 NAS 讀取檔案
  *
  * 跨平台支援：
- *   Windows（開發機）: .env 設 NAS_FILE_PATH=\\nas109\ENG_Public\ERP_prj\week_temp
- *                       會自動用 CPM2_USERNAME/CPM2_PASSWORD 做 net use 連線
- *   Linux（正式機）:   先掛載 NAS，再設 NAS_FILE_PATH=/mnt/nas_eng/ERP_prj/week_temp
+ *   Windows: net use 連線 NAS → fs.readFile
+ *   Linux:   smbclient 直接從 SMB 取檔（需安裝 smbclient: sudo apt install smbclient）
+ *
+ * .env 設定：CPM2_USERNAME / CPM2_PASSWORD / NAS_FILE_PATH
  */
 
 import { promises as fs } from 'fs'
+import { execFileSync, spawnSync } from 'child_process'
 import path from 'path'
 import os from 'os'
 import db from '@/lib/db'
 
-const NAS_FILE_PATH = process.env.NAS_FILE_PATH || '\\\\nas109\\ENG_Public\\ERP_prj\\week_temp'
 const IS_WINDOWS = os.platform() === 'win32'
+const NAS_SERVER = 'nas109'
+const NAS_SHARE_NAME = 'ENG_Public'
+const NAS_SUB_PATH = 'ERP_prj/week_temp'
+
+// Windows 用的路徑
+const NAS_WIN_SHARE = `\\\\${NAS_SERVER}\\${NAS_SHARE_NAME}`
+const NAS_WIN_BASE = `\\\\${NAS_SERVER}\\${NAS_SHARE_NAME}\\${NAS_SUB_PATH.replace(/\//g, '\\')}`
+
+// 如有設定 NAS_FILE_PATH 就優先用（支援已掛載的情境）
+const NAS_FILE_PATH = process.env.NAS_FILE_PATH || (IS_WINDOWS ? NAS_WIN_BASE : null)
 
 const EXT_CONTENT_TYPE = {
   '.pdf': 'application/pdf',
@@ -26,65 +37,94 @@ const EXT_CONTENT_TYPE = {
   '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 }
 
-// ── Windows NAS 連線管理 ──
+// ── Windows: net use 連線管理 ──
 let nasConnected = false
 
-function ensureNasConnection() {
-  // Linux 不需要 net use，靠 OS 掛載
-  if (!IS_WINDOWS) return
+function ensureWindowsNas() {
   if (nasConnected) return
 
   const username = process.env.CPM2_USERNAME
   const password = process.env.CPM2_PASSWORD
-  if (!username || !password) {
-    throw new Error('未設定 CPM2_USERNAME 或 CPM2_PASSWORD')
-  }
-
-  const { spawnSync } = require('child_process')
-  // 從 NAS_FILE_PATH 取得 share 路徑（例如 \\nas109\ENG_Public）
-  const parts = NAS_FILE_PATH.replace(/^\\\\/, '').split('\\')
-  const nasShare = `\\\\${parts[0]}\\${parts[1]}`
+  if (!username || !password) throw new Error('未設定 CPM2_USERNAME 或 CPM2_PASSWORD')
 
   function run(args) {
     return spawnSync('net', args, { stdio: 'pipe', windowsHide: true, shell: false })
   }
 
   function tryConnect() {
-    const r = run(['use', nasShare, `/user:${username}`, password])
+    const r = run(['use', NAS_WIN_SHARE, `/user:${username}`, password])
     if (r.status !== 0) {
       throw new Error(r.stderr?.toString('utf8')?.trim() || `exit code ${r.status}`)
     }
   }
 
-  // 先刪除 server 上的既有連線（解決 error 1219）
   function clearConnections() {
-    const list = run(['use'])
-    const output = list.stdout?.toString('utf8') || ''
-    const serverName = parts[0] // e.g. "nas109"
-    const re = new RegExp(`(\\\\\\\\${serverName}\\\\\\S+)`, 'gi')
-    let match
-    while ((match = re.exec(output)) !== null) {
-      console.log(`[file-proxy] 刪除既有連線: ${match[1]}`)
-      run(['use', match[1], '/delete', '/y'])
+    const output = run(['use']).stdout?.toString('utf8') || ''
+    const re = new RegExp(`(\\\\\\\\${NAS_SERVER}\\\\\\S+)`, 'gi')
+    let m
+    while ((m = re.exec(output)) !== null) {
+      console.log(`[file-proxy] 刪除既有連線: ${m[1]}`)
+      run(['use', m[1], '/delete', '/y'])
     }
   }
 
   try {
     tryConnect()
     nasConnected = true
-    console.log('[file-proxy] NAS 連線成功')
+    console.log('[file-proxy] NAS 連線成功 (Windows net use)')
   } catch (_) {
-    console.log('[file-proxy] NAS 首次連線失敗，清除既有連線後重試...')
+    console.log('[file-proxy] 首次連線失敗，清除既有連線後重試...')
     clearConnections()
     try {
       tryConnect()
       nasConnected = true
       console.log('[file-proxy] NAS 重新連線成功')
     } catch (err) {
-      console.error(`[file-proxy] NAS 連線失敗: ${err.message}`)
       throw new Error(`NAS 連線失敗: ${err.message}`)
     }
   }
+}
+
+// ── Linux: smbclient 取檔 ──
+function readFileViaSmbclient(smbRelativePath) {
+  const username = process.env.CPM2_USERNAME
+  const password = process.env.CPM2_PASSWORD
+  if (!username || !password) throw new Error('未設定 CPM2_USERNAME 或 CPM2_PASSWORD')
+
+  // smbclient 路徑用正斜線
+  const smbPath = `${NAS_SUB_PATH}/${smbRelativePath}`.replace(/\\/g, '/')
+  const tmpFile = path.join(os.tmpdir(), `nas_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+
+  try {
+    execFileSync('smbclient', [
+      `//${NAS_SERVER}/${NAS_SHARE_NAME}`,
+      '-U', `${username}%${password}`,
+      '-c', `get "${smbPath}" "${tmpFile}"`,
+    ], { stdio: 'pipe' })
+
+    const buffer = require('fs').readFileSync(tmpFile)
+    require('fs').unlinkSync(tmpFile)
+    return buffer
+  } catch (error) {
+    try { require('fs').unlinkSync(tmpFile) } catch (_) {}
+    const msg = error.stderr?.toString()?.trim() || error.message
+    throw new Error(`smbclient 取檔失敗: ${msg}`)
+  }
+}
+
+// ── 讀取檔案（自動選擇方式） ──
+async function readNasFile(filePath, fileName) {
+  const relativePath = path.join(filePath, fileName)
+
+  // 方式 1: 有設定 NAS_FILE_PATH（Windows net use 或 Linux 已掛載）
+  if (NAS_FILE_PATH) {
+    if (IS_WINDOWS) ensureWindowsNas()
+    const fullPath = path.join(NAS_FILE_PATH, relativePath)
+    return await fs.readFile(fullPath)
+  }
+
+  // 方式 2: Linux 用 smbclient 直接取檔
+  return readFileViaSmbclient(relativePath)
 }
 
 // ── 路由處理 ──
@@ -115,7 +155,7 @@ export async function GET(request, { params }) {
       })
     }
 
-    // 將路徑分隔符統一為當前 OS 格式
+    // 統一路徑分隔符
     const filePath = (f.FILE_PATH || '').trim().replace(/[/\\]+/g, path.sep).replace(/^[/\\]+|[/\\]+$/g, '')
     const fileName = (f.FILE_NAME || '').trim()
 
@@ -123,11 +163,7 @@ export async function GET(request, { params }) {
       return new Response('檔案路徑不完整', { status: 404 })
     }
 
-    // Windows 需要先建立 NAS 連線
-    ensureNasConnection()
-
-    const fullPath = path.join(NAS_FILE_PATH, filePath, fileName)
-    const buffer = await fs.readFile(fullPath)
+    const buffer = await readNasFile(filePath, fileName)
 
     const ext = path.extname(fileName).toLowerCase()
     const contentType = EXT_CONTENT_TYPE[ext] || 'application/octet-stream'
@@ -141,7 +177,6 @@ export async function GET(request, { params }) {
       },
     })
   } catch (error) {
-    // NAS 斷線時重試一次（僅 Windows）
     if (IS_WINDOWS && nasConnected && error.code === 'UNKNOWN') {
       nasConnected = false
     }
