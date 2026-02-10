@@ -4,7 +4,7 @@ export default {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {
-    '^.+\\.jsx?$': 'babel-jest',
+    '^.+\\.jsx?$': ['babel-jest', { configFile: './babel.config.jest.js' }],
   },
   testPathIgnorePatterns: ['/node_modules/', '/__tests__/helpers/'],
 }
