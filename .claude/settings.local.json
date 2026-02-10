@@ -19,7 +19,9 @@
       "Bash(pip show:*)",
       "Bash(pip install:*)",
       "Bash(npm install:*)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(npm run build:*)",
+      "Bash(cmd //c \"cd /d D:\\\\bes-next-dashboard-beshq02 && rmdir /s /q .next\")"
     ]
   }
 }

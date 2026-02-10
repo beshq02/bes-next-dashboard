@@ -963,9 +963,6 @@ export default function AuthDialog({
                 >
                   驗證失敗，請重新輸入驗證碼或身分證末四碼
                 </Typography>
-                <Box sx={{ fontSize: '12px', color: 'text.secondary' }}>
-                  若持續無法驗證，請聯絡我們：{contactInfo}
-                </Box>
               </Alert>
             </Box>
           )}

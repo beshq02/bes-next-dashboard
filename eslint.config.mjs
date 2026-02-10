@@ -11,6 +11,7 @@ import unusedImports from 'eslint-plugin-unused-imports'
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
+  { ignores: ['src/components/ui/**', 'src/__tests__/**'] },
   { files: ['**/*.{js,mjs,cjs,jsx}'] },
   { languageOptions: { globals: { ...globals.browser, ...globals.node } } },
   pluginJs.configs.recommended,

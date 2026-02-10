@@ -105,7 +105,7 @@ export default function ShareholderUpdatePage() {
     try {
       setShowAuthDialog(false)
       setIsAuthenticated(true)
-      
+
       // 儲存 logId（如果有的話）
       if (data?.logId) {
         setLogId(data.logId)
@@ -115,7 +115,7 @@ export default function ShareholderUpdatePage() {
       if (data?.shareholderCode) {
         const response = await fetch(`/api/shareholder/data/${data.shareholderCode}`)
         const result = await response.json()
-        
+
         if (response.ok && result.success && result.data) {
           // 使用完整的資料結構
           setShareholderData(result.data)
@@ -156,13 +156,7 @@ export default function ShareholderUpdatePage() {
       }}
     >
       {/* Logo + 公司名稱 */}
-      <Box
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        gap={1.5}
-        sx={{ mb: 1.5 }}
-      >
+      <Box display="flex" alignItems="center" justifyContent="center" gap={1.5} sx={{ mb: 1.5 }}>
         <Box
           sx={{
             width: { xs: 40, sm: 48 },
@@ -236,12 +230,7 @@ export default function ShareholderUpdatePage() {
         }}
       >
         {renderNavBar()}
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          sx={{ flex: 1 }}
-        >
+        <Box display="flex" justifyContent="center" alignItems="center" sx={{ flex: 1 }}>
           <CircularProgress />
         </Box>
       </Box>
