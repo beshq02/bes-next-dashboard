@@ -1,153 +1,137 @@
 /**
- * 圖片代理 API
- * 解決 cpm2.bes.com.tw 跨站 cookie 驗證導致前端無法載入圖片的問題
+ * 圖片代理 API — 直接從 NAS 讀取檔案
  *
- * 支援兩種認證方式（按優先順序）：
- * 1. 自動登入：設定 CPM2_USERNAME + CPM2_PASSWORD，系統會自動登入取得 cookie
- * 2. 手動 cookie：設定 CPM2_COOKIE=Week=<cookie值>
+ * 跨平台支援：
+ *   Windows: net use 連線 NAS → fs.readFile
+ *   Linux:   smbclient 直接從 SMB 取檔（需安裝 smbclient: sudo apt install smbclient）
  *
- * 注意：cpm2 伺服器即使成功回傳圖片也會帶 302 + location:/login，
- *       需透過 content-type 判斷是否為圖片，而非僅看 status code
+ * .env 設定：CPM2_USERNAME / CPM2_PASSWORD / NAS_FILE_PATH
  */
 
-const CPM2_BASE = 'https://cpm2.bes.com.tw'
-const FILE_URL = `${CPM2_BASE}/Week/File/GetWkFile`
-const LOGIN_URL = `${CPM2_BASE}/Account/Login`
-const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+import { promises as fs } from 'fs'
+import { execFileSync, spawnSync } from 'child_process'
+import path from 'path'
+import os from 'os'
+import db from '@/lib/db'
 
-// 記憶體中快取 cookie，避免每次請求都重新登入
-let cachedCookie = null
-let cookieExpiry = 0
+const IS_WINDOWS = os.platform() === 'win32'
+const NAS_SERVER = process.env.NAS_SERVER || 'nas109'
+const NAS_SHARE_NAME = 'ENG_Public'
+const NAS_SUB_PATH = 'ERP_prj/week_temp'
 
-/**
- * 自動登入 cpm2 取得 cookie
- */
-async function loginAndGetCookie() {
+// Windows 用的路徑
+const NAS_WIN_SHARE = `\\\\${NAS_SERVER}\\${NAS_SHARE_NAME}`
+const NAS_WIN_BASE = `\\\\${NAS_SERVER}\\${NAS_SHARE_NAME}\\${NAS_SUB_PATH.replace(/\//g, '\\')}`
+
+// 如有設定 NAS_FILE_PATH 就優先用（支援已掛載的情境）
+// 在 Linux 上若 NAS_FILE_PATH 是 Windows UNC 路徑（\\開頭），則忽略它，改用 smbclient
+const rawNasPath = process.env.NAS_FILE_PATH
+const NAS_FILE_PATH = (rawNasPath && !(rawNasPath.startsWith('\\\\') && !IS_WINDOWS))
+  ? rawNasPath
+  : (IS_WINDOWS ? NAS_WIN_BASE : null)
+
+const EXT_CONTENT_TYPE = {
+  '.pdf': 'application/pdf',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
+
+// ── Windows: net use 連線管理 ──
+let nasConnected = false
+
+function ensureWindowsNas() {
+  if (nasConnected) return
+
   const username = process.env.CPM2_USERNAME
   const password = process.env.CPM2_PASSWORD
+  if (!username || !password) throw new Error('未設定 CPM2_USERNAME 或 CPM2_PASSWORD')
 
-  if (!username || !password) return null
+  function run(args) {
+    return spawnSync('net', args, { stdio: 'pipe', windowsHide: true, shell: false })
+  }
+
+  function tryConnect() {
+    const r = run(['use', NAS_WIN_SHARE, `/user:${username}`, password])
+    if (r.status !== 0) {
+      throw new Error(r.stderr?.toString('utf8')?.trim() || `exit code ${r.status}`)
+    }
+  }
+
+  function clearConnections() {
+    const output = run(['use']).stdout?.toString('utf8') || ''
+    const re = new RegExp(`(\\\\\\\\${NAS_SERVER}\\\\\\S+)`, 'gi')
+    let m
+    while ((m = re.exec(output)) !== null) {
+      console.log(`[file-proxy] 刪除既有連線: ${m[1]}`)
+      run(['use', m[1], '/delete', '/y'])
+    }
+  }
 
   try {
-    // 先取得登入頁面的 anti-forgery token
-    const loginPageRes = await fetch(LOGIN_URL, {
-      headers: { 'User-Agent': UA },
-      redirect: 'manual',
-    })
-
-    const loginPageCookies = loginPageRes.headers.getSetCookie?.() || []
-    const loginPageHtml = await loginPageRes.text()
-
-    // 取得 anti-forgery token
-    const tokenMatch = loginPageHtml.match(
-      /name="__RequestVerificationToken"[^>]*value="([^"]+)"/
-    )
-    const antiForgeryToken = tokenMatch ? tokenMatch[1] : ''
-
-    // 組合登入頁的 cookie
-    const pageCookieStr = loginPageCookies
-      .map(c => c.split(';')[0])
-      .join('; ')
-
-    // POST 登入
-    const formData = new URLSearchParams()
-    formData.append('Account', username)
-    formData.append('Password', password)
-    if (antiForgeryToken) {
-      formData.append('__RequestVerificationToken', antiForgeryToken)
+    tryConnect()
+    nasConnected = true
+    console.log('[file-proxy] NAS 連線成功 (Windows net use)')
+  } catch (_) {
+    console.log('[file-proxy] 首次連線失敗，清除既有連線後重試...')
+    clearConnections()
+    try {
+      tryConnect()
+      nasConnected = true
+      console.log('[file-proxy] NAS 重新連線成功')
+    } catch (err) {
+      throw new Error(`NAS 連線失敗: ${err.message}`)
     }
+  }
+}
 
-    const loginRes = await fetch(LOGIN_URL, {
-      method: 'POST',
-      headers: {
-        'User-Agent': UA,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Cookie: pageCookieStr,
-      },
-      body: formData.toString(),
-      redirect: 'manual',
-    })
+// ── Linux: smbclient 取檔 ──
+function readFileViaSmbclient(smbRelativePath) {
+  const username = process.env.CPM2_USERNAME
+  const password = process.env.CPM2_PASSWORD
+  if (!username || !password) throw new Error('未設定 CPM2_USERNAME 或 CPM2_PASSWORD')
 
-    // 從 Set-Cookie 取得認證 cookie
-    const setCookies = loginRes.headers.getSetCookie?.() || []
-    const weekCookie = setCookies.find(c => c.startsWith('Week='))
+  // smbclient 路徑用正斜線
+  const smbPath = `${NAS_SUB_PATH}/${smbRelativePath}`.replace(/\\/g, '/')
+  const tmpFile = path.join(os.tmpdir(), `nas_${Date.now()}_${Math.random().toString(36).slice(2)}`)
 
-    if (weekCookie) {
-      const cookieValue = weekCookie.split(';')[0]
-      // 快取 cookie，有效期設為 4 小時
-      cachedCookie = cookieValue
-      cookieExpiry = Date.now() + 4 * 60 * 60 * 1000
-      console.log('[file-proxy] 自動登入成功，已取得新 cookie')
-      return cookieValue
-    }
+  try {
+    execFileSync('smbclient', [
+      `//${NAS_SERVER}/${NAS_SHARE_NAME}`,
+      '-U', `${username}%${password}`,
+      '-c', `get "${smbPath}" "${tmpFile}"`,
+    ], { stdio: 'pipe' })
 
-    console.error('[file-proxy] 自動登入失敗：未取得 Week cookie')
-    return null
+    const buffer = require('fs').readFileSync(tmpFile)
+    require('fs').unlinkSync(tmpFile)
+    return buffer
   } catch (error) {
-    console.error('[file-proxy] 自動登入失敗:', error.message)
-    return null
+    try { require('fs').unlinkSync(tmpFile) } catch (_) {}
+    const msg = error.stderr?.toString()?.trim() || error.message
+    throw new Error(`smbclient 取檔失敗: ${msg}`)
   }
 }
 
-/**
- * 取得有效的 cookie
- */
-async function getValidCookie() {
-  // 如果快取的 cookie 還沒過期，直接用
-  if (cachedCookie && Date.now() < cookieExpiry) {
-    return cachedCookie
+// ── 讀取檔案（自動選擇方式） ──
+async function readNasFile(filePath, fileName) {
+  const relativePath = path.join(filePath, fileName)
+
+  // 方式 1: 有設定 NAS_FILE_PATH（Windows net use 或 Linux 已掛載）
+  if (NAS_FILE_PATH) {
+    if (IS_WINDOWS) ensureWindowsNas()
+    const fullPath = path.join(NAS_FILE_PATH, relativePath)
+    return await fs.readFile(fullPath)
   }
 
-  // 嘗試自動登入
-  const newCookie = await loginAndGetCookie()
-  if (newCookie) return newCookie
-
-  // 回退到 .env 中的靜態 cookie
-  return process.env.CPM2_COOKIE || null
+  // 方式 2: Linux 用 smbclient 直接取檔
+  return readFileViaSmbclient(relativePath)
 }
 
-/**
- * 判斷 content-type 是否為檔案類型
- */
-function isFileContentType(contentType) {
-  return (
-    contentType.startsWith('image/') ||
-    contentType.startsWith('application/pdf') ||
-    contentType.startsWith('application/octet-stream') ||
-    contentType.startsWith('application/msword') ||
-    contentType.startsWith('application/vnd.')
-  )
-}
-
-/**
- * 用指定 cookie 取得檔案
- */
-async function fetchFile(fileId, cookie) {
-  const targetUrl = `${FILE_URL}?fileId=${fileId}`
-
-  const response = await fetch(targetUrl, {
-    headers: {
-      'User-Agent': UA,
-      Cookie: cookie,
-    },
-    redirect: 'manual',
-  })
-
-  const contentType = response.headers.get('content-type') || ''
-
-  // 判斷是否為檔案內容：以 content-type 為主要依據，不再單純依賴 content-length
-  if (isFileContentType(contentType)) {
-    const buffer = await response.arrayBuffer()
-    if (buffer.byteLength > 0) {
-      return { success: true, buffer, contentType }
-    }
-  }
-
-  // content-type 不是檔案類型，可能是認證失敗（回傳了 HTML 登入頁面）
-  return { success: false, status: response.status, contentType }
-}
-
+// ── 路由處理 ──
 export async function GET(request, { params }) {
   const { fileId } = await params
 
@@ -155,51 +139,52 @@ export async function GET(request, { params }) {
     return new Response('無效的 fileId', { status: 400 })
   }
 
-  const cookie = await getValidCookie()
-  if (!cookie) {
-    return Response.json(
-      {
-        error: '無法取得 CPM2 認證',
-        hint: '請設定 CPM2_USERNAME + CPM2_PASSWORD 或 CPM2_COOKIE',
-      },
-      { status: 503 }
-    )
-  }
-
   try {
-    // 第一次嘗試
-    let result = await fetchFile(fileId, cookie)
+    const rows = await db.query(
+      `SELECT TOP 1 FILE_PATH, FILE_NAME, FILE_TEXT
+       FROM FR_WK_FILE
+       WHERE FILE_ID = @fileId`,
+      { fileId: parseInt(fileId) }
+    )
 
-    // 如果失敗，嘗試重新登入後再試一次
-    if (!result.success && process.env.CPM2_USERNAME && process.env.CPM2_PASSWORD) {
-      cachedCookie = null
-      cookieExpiry = 0
-      const newCookie = await loginAndGetCookie()
-      if (newCookie) {
-        result = await fetchFile(fileId, newCookie)
-      }
+    const f = rows?.[0]
+    if (!f) {
+      return new Response('找不到檔案', { status: 404 })
     }
 
-    if (result.success) {
-      return new Response(result.buffer, {
-        status: 200,
-        headers: {
-          'Content-Type': result.contentType,
-          'Content-Length': String(result.buffer.byteLength),
-          'Cache-Control': 'public, max-age=604800, stale-while-revalidate=2592000',
-        },
+    // 純文字內容直接回傳
+    if (f.FILE_TEXT?.trim()) {
+      return new Response(f.FILE_TEXT, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       })
     }
 
-    return Response.json(
-      {
-        error: 'CPM2 Cookie 已過期或無效',
-        hint: '請重新登入 cpm2.bes.com.tw 並更新 .env 中的 CPM2_COOKIE，或設定 CPM2_USERNAME + CPM2_PASSWORD 進行自動登入',
+    // 統一路徑分隔符
+    const filePath = (f.FILE_PATH || '').trim().replace(/[/\\]+/g, path.sep).replace(/^[/\\]+|[/\\]+$/g, '')
+    const fileName = (f.FILE_NAME || '').trim()
+
+    if (!filePath || !fileName) {
+      return new Response('檔案路徑不完整', { status: 404 })
+    }
+
+    const buffer = await readNasFile(filePath, fileName)
+
+    const ext = path.extname(fileName).toLowerCase()
+    const contentType = EXT_CONTENT_TYPE[ext] || 'application/octet-stream'
+
+    return new Response(buffer, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(buffer.byteLength),
+        'Cache-Control': 'public, max-age=604800, stale-while-revalidate=2592000',
       },
-      { status: 502 }
-    )
+    })
   } catch (error) {
-    console.error(`[file-proxy] 代理失敗 fileId=${fileId}:`, error)
-    return new Response('代理請求失敗', { status: 500 })
+    if (IS_WINDOWS && nasConnected && error.code === 'UNKNOWN') {
+      nasConnected = false
+    }
+    console.error(`[file-proxy] fileId=${fileId} 失敗:`, error.message)
+    return new Response(`檔案讀取失敗: ${error.message}`, { status: 500 })
   }
 }
