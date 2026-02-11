@@ -49,12 +49,16 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
   const [originalMobilePhone1, setOriginalMobilePhone1] = useState('')
   const [originalMobilePhone2, setOriginalMobilePhone2] = useState('')
 
+  // Email 欄位
+  const [email, setEmail] = useState('')
+
   // 錯誤狀態
   const [cityError, setCityError] = useState('')
   const [districtError, setDistrictError] = useState('')
   const [addressError, setAddressError] = useState('')
   const [homePhone1Error, setHomePhone1Error] = useState('')
   const [mobilePhone1Error, setMobilePhone1Error] = useState('')
+  const [emailError, setEmailError] = useState('')
 
   // 是否已觸碰欄位（用於顯示即時驗證錯誤）
   const [touchedFields, setTouchedFields] = useState({})
@@ -119,6 +123,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
           ? shareholderData.updatedMobilePhone2
           : shareholderData.originalMobilePhone2 || ''
       )
+      setEmail(shareholderData.updatedEmail || '')
     }
   }, [shareholderData])
 
@@ -151,6 +156,14 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
         setMobilePhone1Error('')
         return true
 
+      case 'email':
+        if (trimmedValue && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedValue)) {
+          setEmailError('Email 格式錯誤')
+          return false
+        }
+        setEmailError('')
+        return true
+
       default:
         return true
     }
@@ -174,6 +187,9 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
         break
       case 'mobilePhone1':
         validateField('mobilePhone1', mobilePhone1)
+        break
+      case 'email':
+        validateField('email', email)
         break
     }
   }
@@ -226,15 +242,23 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
     setMobilePhone2(value)
   }
 
+  const handleEmailChange = e => {
+    const value = e.target.value
+    setEmail(value)
+    if (touchedFields.email) validateField('email', value)
+  }
+
   // 驗證所有欄位（僅格式驗證，無必填檢查）
   const validateAllFields = () => {
     const isValidMobilePhone1 = validateField('mobilePhone1', mobilePhone1)
+    const isValidEmail = validateField('email', email)
 
     setTouchedFields({
       mobilePhone1: true,
+      email: true,
     })
 
-    return isValidMobilePhone1
+    return isValidMobilePhone1 && isValidEmail
   }
 
   // 處理表單提交
@@ -268,6 +292,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
       updatedHomePhone2: homePhone2.trim() || null,
       updatedMobilePhone1: mobilePhone1.trim() || null,
       updatedMobilePhone2: mobilePhone2.trim() || null,
+      updatedEmail: email.trim() || null,
       ...(logId && { logId }),
     }
 
@@ -360,7 +385,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
           </p>
           <p style={{ margin: '0 0 0.75em 0' }}>
             感謝您長期以來對中華工程的信任與支持！為督促我們企業能更正向的發展，請您協助
-            <strong>填寫問卷</strong>，我們後續將寄發<strong>7-11 100元商品券</strong>
+            <strong>填寫問卷</strong>，我們後續將寄發<strong> 7-11 壹百元商品卡</strong>
             以為感謝！
           </p>
           <p style={{ margin: 0 }}>
@@ -379,6 +404,120 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
       >
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           <form onSubmit={handleSubmit}>
+            {/* 手機號碼區塊 */}
+            <Box sx={{ mb: 4 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#333',
+                  mb: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                手機號碼
+              </Typography>
+
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="手機 1"
+                  type="tel"
+                  value={mobilePhone1}
+                  onChange={handleMobilePhone1Change}
+                  onBlur={() => handleBlur('mobilePhone1')}
+                  error={!!mobilePhone1Error && touchedFields.mobilePhone1}
+                  helperText={
+                    touchedFields.mobilePhone1 && mobilePhone1Error ? mobilePhone1Error : ''
+                  }
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={textFieldSx}
+                  inputProps={{
+                    maxLength: 10,
+                    inputMode: 'numeric',
+                    pattern: '[0-9]{10}',
+                    'aria-label': '手機號碼1',
+                  }}
+                />
+                <TextField
+                  label="手機 2（選填）"
+                  type="tel"
+                  value={mobilePhone2}
+                  onChange={handleMobilePhone2Change}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={textFieldSx}
+                  inputProps={{
+                    maxLength: 10,
+                    inputMode: 'numeric',
+                    pattern: '[0-9]{10}',
+                    'aria-label': '手機號碼2',
+                  }}
+                />
+              </Stack>
+            </Box>
+
+            <Divider sx={{ my: 3 }} />
+
+            {/* 住家電話區塊 */}
+            <Box sx={{ mb: 4 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#333',
+                  mb: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                住家電話
+              </Typography>
+
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="電話 1"
+                  type="tel"
+                  value={homePhone1}
+                  onChange={handleHomePhone1Change}
+                  onBlur={() => handleBlur('homePhone1')}
+                  error={!!homePhone1Error && touchedFields.homePhone1}
+                  helperText={touchedFields.homePhone1 && homePhone1Error ? homePhone1Error : ''}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={textFieldSx}
+                  inputProps={{
+                    maxLength: 20,
+                    inputMode: 'tel',
+                    'aria-label': '住家電話1',
+                  }}
+                />
+                <TextField
+                  label="電話 2（選填）"
+                  type="tel"
+                  value={homePhone2}
+                  onChange={handleHomePhone2Change}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={textFieldSx}
+                  inputProps={{
+                    maxLength: 20,
+                    inputMode: 'tel',
+                    'aria-label': '住家電話2',
+                  }}
+                />
+              </Stack>
+            </Box>
+
+            <Divider sx={{ my: 3 }} />
+
             {/* 地址區塊 */}
             <Box sx={{ mb: 4 }}>
               <Typography
@@ -487,7 +626,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
 
             <Divider sx={{ my: 3 }} />
 
-            {/* 住家電話區塊 */}
+            {/* Email 區塊 */}
             <Box sx={{ mb: 4 }}>
               <Typography
                 variant="subtitle2"
@@ -500,103 +639,27 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                   letterSpacing: '0.5px',
                 }}
               >
-                住家電話
+                電子信箱
               </Typography>
 
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  label="電話 1"
-                  type="tel"
-                  value={homePhone1}
-                  onChange={handleHomePhone1Change}
-                  onBlur={() => handleBlur('homePhone1')}
-                  error={!!homePhone1Error && touchedFields.homePhone1}
-                  helperText={touchedFields.homePhone1 && homePhone1Error ? homePhone1Error : ''}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  sx={textFieldSx}
-                  inputProps={{
-                    maxLength: 20,
-                    inputMode: 'tel',
-                    'aria-label': '住家電話1',
-                  }}
-                />
-                <TextField
-                  label="電話 2（選填）"
-                  type="tel"
-                  value={homePhone2}
-                  onChange={handleHomePhone2Change}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  sx={textFieldSx}
-                  inputProps={{
-                    maxLength: 20,
-                    inputMode: 'tel',
-                    'aria-label': '住家電話2',
-                  }}
-                />
-              </Stack>
-            </Box>
-
-            <Divider sx={{ my: 3 }} />
-
-            {/* 手機號碼區塊 */}
-            <Box sx={{ mb: 4 }}>
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#333',
-                  mb: 2,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
+              <TextField
+                label="Email（選填）"
+                type="email"
+                value={email}
+                onChange={handleEmailChange}
+                onBlur={() => handleBlur('email')}
+                error={!!emailError && touchedFields.email}
+                helperText={touchedFields.email && emailError ? emailError : ''}
+                fullWidth
+                variant="outlined"
+                size="small"
+                sx={textFieldSx}
+                inputProps={{
+                  maxLength: 255,
+                  inputMode: 'email',
+                  'aria-label': '電子信箱',
                 }}
-              >
-                手機號碼
-              </Typography>
-
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  label="手機 1"
-                  type="tel"
-                  value={mobilePhone1}
-                  onChange={handleMobilePhone1Change}
-                  onBlur={() => handleBlur('mobilePhone1')}
-                  error={!!mobilePhone1Error && touchedFields.mobilePhone1}
-                  helperText={
-                    touchedFields.mobilePhone1 && mobilePhone1Error ? mobilePhone1Error : ''
-                  }
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  sx={textFieldSx}
-                  inputProps={{
-                    maxLength: 10,
-                    inputMode: 'numeric',
-                    pattern: '[0-9]{10}',
-                    'aria-label': '手機號碼1',
-                  }}
-                />
-                <TextField
-                  label="手機 2（選填）"
-                  type="tel"
-                  value={mobilePhone2}
-                  onChange={handleMobilePhone2Change}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  sx={textFieldSx}
-                  inputProps={{
-                    maxLength: 10,
-                    inputMode: 'numeric',
-                    pattern: '[0-9]{10}',
-                    'aria-label': '手機號碼2',
-                  }}
-                />
-              </Stack>
+              />
             </Box>
 
             {/* 提交按鈕 */}

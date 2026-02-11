@@ -44,6 +44,7 @@ export async function GET(request, { params }) {
              UPDATED_POSTAL_CODE,
              UPDATED_HOME_PHONE_1, UPDATED_HOME_PHONE_2,
              UPDATED_MOBILE_PHONE_1, UPDATED_MOBILE_PHONE_2,
+             UPDATED_EMAIL,
              LOGIN_COUNT, UPDATE_COUNT,
              CREATED_AT, UPDATED_AT
       FROM [STAGE].[dbo].[SHAREHOLDER]
@@ -96,6 +97,8 @@ export async function GET(request, { params }) {
       updatedHomePhone2: clean(shareholder.UPDATED_HOME_PHONE_2),
       updatedMobilePhone1: clean(shareholder.UPDATED_MOBILE_PHONE_1),
       updatedMobilePhone2: clean(shareholder.UPDATED_MOBILE_PHONE_2),
+      // Email 欄位
+      updatedEmail: clean(shareholder.UPDATED_EMAIL),
       // 其他欄位
       loginCount: shareholder.LOGIN_COUNT || 0,
       updateCount: shareholder.UPDATE_COUNT || 0,
@@ -136,6 +139,7 @@ export async function PUT(request, { params }) {
       updatedPostalCode,
       updatedHomePhone1, updatedHomePhone2,
       updatedMobilePhone1, updatedMobilePhone2,
+      updatedEmail,
       logId
     } = body
     
@@ -159,7 +163,8 @@ export async function PUT(request, { params }) {
       updatedCity, updatedDistrict, updatedAddress,
       updatedPostalCode,
       updatedHomePhone1, updatedHomePhone2,
-      updatedMobilePhone1, updatedMobilePhone2
+      updatedMobilePhone1, updatedMobilePhone2,
+      updatedEmail
     ].some(field => field !== undefined)
 
     if (!hasAnyField) {
@@ -178,7 +183,8 @@ export async function PUT(request, { params }) {
         UPDATED_CITY, UPDATED_DISTRICT, UPDATED_ADDRESS,
         UPDATED_POSTAL_CODE,
         UPDATED_HOME_PHONE_1, UPDATED_HOME_PHONE_2,
-        UPDATED_MOBILE_PHONE_1, UPDATED_MOBILE_PHONE_2
+        UPDATED_MOBILE_PHONE_1, UPDATED_MOBILE_PHONE_2,
+        UPDATED_EMAIL
       FROM [STAGE].[dbo].[SHAREHOLDER]
       WHERE [SORT] = @shareholderCode
     `
@@ -213,6 +219,7 @@ export async function PUT(request, { params }) {
     const defaultHomePhone2 = getDefaultValue(existing.UPDATED_HOME_PHONE_2, existing.HOME_PHONE_2) || null
     const defaultMobilePhone1 = getDefaultValue(existing.UPDATED_MOBILE_PHONE_1, existing.MOBILE_PHONE_1) || null
     const defaultMobilePhone2 = getDefaultValue(existing.UPDATED_MOBILE_PHONE_2, existing.MOBILE_PHONE_2) || null
+    const defaultEmail = getDefaultValue(existing.UPDATED_EMAIL, '') || null
 
     // 處理有提供的欄位，比較前端值與預設值
     const updateFields = []
@@ -298,7 +305,17 @@ export async function PUT(request, { params }) {
         updatedParams.updatedMobilePhone2 = trimmedPhone
       }
     }
-    
+
+    // 處理 Email 欄位（選填，前端已驗證，直接處理）
+    if (updatedEmail !== undefined) {
+      const trimmedEmail = (updatedEmail || '').trim() || null
+      if (trimmedEmail !== defaultEmail) {
+        updateFields.push('UPDATED_EMAIL = @updatedEmail')
+        updateParams.updatedEmail = trimmedEmail
+        updatedParams.updatedEmail = trimmedEmail
+      }
+    }
+
     // 檢查是否有任何欄位變更
     const hasDataChange = updateFields.length > 0
 
@@ -326,7 +343,8 @@ export async function PUT(request, { params }) {
               UPDATED_HOME_PHONE_1 = @updatedHomePhone1,
               UPDATED_HOME_PHONE_2 = @updatedHomePhone2,
               UPDATED_MOBILE_PHONE_1 = @updatedMobilePhone1,
-              UPDATED_MOBILE_PHONE_2 = @updatedMobilePhone2
+              UPDATED_MOBILE_PHONE_2 = @updatedMobilePhone2,
+              UPDATED_EMAIL = @updatedEmail
           WHERE LOG_ID = @logId AND SHAREHOLDER_CODE = @shareholderCode
         `
 
@@ -343,6 +361,7 @@ export async function PUT(request, { params }) {
           updatedHomePhone2: updatedParams.updatedHomePhone2 !== undefined ? updatedParams.updatedHomePhone2 : '',
           updatedMobilePhone1: updatedParams.updatedMobilePhone1 !== undefined ? updatedParams.updatedMobilePhone1 : '',
           updatedMobilePhone2: updatedParams.updatedMobilePhone2 !== undefined ? updatedParams.updatedMobilePhone2 : '',
+          updatedEmail: updatedParams.updatedEmail !== undefined ? updatedParams.updatedEmail : '',
         }
 
         await db.query(updateLogQuery, logUpdateParams)

@@ -104,30 +104,52 @@ export default function ThankYouPage() {
               問卷邀請
             </Typography>
 
-            {/* 說明文字 */}
-            <Typography
+            {/* 說明文字 + 商品卡圖片 並排 */}
+            <Box
               sx={{
-                fontSize: { xs: '15px', sm: '16px' },
-                lineHeight: 1.8,
-                color: 'text.primary',
+                display: 'flex',
+                alignItems: 'center',
+                gap: { xs: 2, sm: 3 },
                 mb: 3,
               }}
             >
-              誠摯邀請您填寫 ESG 利害關係人問卷，完成後我們將寄送
-              <Box
-                component="span"
+              <Typography
                 sx={{
-                  fontWeight: 600,
-                  color: '#1976d2',
+                  flex: 1,
+                  fontSize: { xs: '15px', sm: '16px' },
+                  lineHeight: 1.8,
+                  color: 'text.primary',
                 }}
               >
-                {' '}
-                7-11 超商 100 元商品券{' '}
+                誠摯邀請您填寫 ESG 利害關係人問卷，完成後我們將寄送
+                <Box
+                  component="span"
+                  sx={{
+                    fontWeight: 600,
+                    color: '#1976d2',
+                  }}
+                >
+                  {' '}
+                  7-11 壹百元商品卡{' '}
+                </Box>
+                以表感謝。
+              </Typography>
+              <Box sx={{ flexShrink: 0 }}>
+                <Image
+                  src="/711card.png"
+                  alt="7-11 壹百元商品卡"
+                  width={80}
+                  height={120}
+                  style={{
+                    objectFit: 'contain',
+                    borderRadius: '6px',
+                    transform: 'rotate(6deg)',
+                  }}
+                />
               </Box>
-              以表感謝。
-            </Typography>
+            </Box>
 
-            <Divider sx={{ my: 3 }} />
+            <Divider sx={{ mb: 3 }} />
 
             {/* 問卷按鈕 */}
             <Button
