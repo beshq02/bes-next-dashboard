@@ -46,7 +46,7 @@ export default function QRCodeBatchPage() {
   // 表格分頁和篩選
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
-    pageSize: 10,
+    pageSize: 50,
   })
   const [searchText, setSearchText] = useState('')
 
@@ -66,6 +66,10 @@ export default function QRCodeBatchPage() {
           s.shareholderCode?.toLowerCase().includes(searchLower) ||
           s.idNumber?.toLowerCase().includes(searchLower) ||
           s.name?.toLowerCase().includes(searchLower) ||
+          s.city1?.toLowerCase().includes(searchLower) ||
+          s.updatedCity?.toLowerCase().includes(searchLower) ||
+          s.district1?.toLowerCase().includes(searchLower) ||
+          s.updatedDistrict?.toLowerCase().includes(searchLower) ||
           s.originalAddress?.toLowerCase().includes(searchLower) ||
           s.updatedAddress?.toLowerCase().includes(searchLower) ||
           s.originalHomePhone?.toLowerCase().includes(searchLower) ||
@@ -521,7 +525,15 @@ export default function QRCodeBatchPage() {
         flex: 0,
         renderCell: params => {
           if (!params || !params.row) return <Typography variant="body2">-</Typography>
-          return <Typography variant="body2">{params.row.city1 || '-'}</Typography>
+          const updatedCity = params.row.updatedCity
+          const originalCity = params.row.city1
+          let displayValue = '-'
+          if (updatedCity != null && String(updatedCity).trim() !== '') {
+            displayValue = String(updatedCity)
+          } else if (originalCity != null && String(originalCity).trim() !== '') {
+            displayValue = String(originalCity)
+          }
+          return <Typography variant="body2">{displayValue}</Typography>
         },
       },
       {
@@ -531,7 +543,15 @@ export default function QRCodeBatchPage() {
         flex: 0,
         renderCell: params => {
           if (!params || !params.row) return <Typography variant="body2">-</Typography>
-          return <Typography variant="body2">{params.row.district1 || '-'}</Typography>
+          const updatedDistrict = params.row.updatedDistrict
+          const originalDistrict = params.row.district1
+          let displayValue = '-'
+          if (updatedDistrict != null && String(updatedDistrict).trim() !== '') {
+            displayValue = String(updatedDistrict)
+          } else if (originalDistrict != null && String(originalDistrict).trim() !== '') {
+            displayValue = String(originalDistrict)
+          }
+          return <Typography variant="body2">{displayValue}</Typography>
         },
       },
       {
@@ -699,91 +719,37 @@ export default function QRCodeBatchPage() {
         {' '}
         {/* 文檔規範：頁面邊距 lg 或 xl (24-32px) */}
         <Paper sx={{ padding: 3, marginBottom: 3 }}>
-          {/* 第一行：標題與匯出按鈕 */}
+          {/* 標題與搜尋欄位 */}
           <Box
             display="flex"
             justifyContent="space-between"
             alignItems="center"
             marginBottom={2}
             sx={{
-              flexDirection: { xs: 'column', sm: 'row' }, // 行動裝置垂直排列
-              alignItems: { xs: 'stretch', sm: 'center' }, // 行動裝置拉伸對齊
-              gap: { xs: 2, sm: 0 }, // 行動裝置時增加間距
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'stretch', sm: 'center' },
+              gap: { xs: 2, sm: 2 },
             }}
           >
             <Typography
               variant="h6"
               sx={{
-                fontSize: '20px', // 文檔規範：20px
-                fontWeight: 700, // 文檔規範：Bold 字重
-                color: 'primary.main', // 文檔規範：Primary 顏色
-                display: 'block', // 獨立一行顯示
+                fontSize: '20px',
+                fontWeight: 700,
+                color: 'primary.main',
+                whiteSpace: 'nowrap',
               }}
             >
               股東列表
             </Typography>
-            <Box
-              sx={{
-                display: 'flex',
-                gap: 2,
-                flexDirection: { xs: 'column', sm: 'row' },
-                width: { xs: '100%', sm: 'auto' },
-              }}
-            >
-              {/* 匯出按鈕已隱藏 */}
-              {/* <Button
-                variant="contained"
-                size="medium"
-                startIcon={<Download />}
-                onClick={handleExportExcel}
-                disabled={generatingQRCodes || shareholders.length === 0}
-                sx={{
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  flex: { xs: '1 1 auto', sm: '0 0 auto' },
-                  minWidth: { xs: '100%', sm: 'auto' },
-                }}
-              >
-                {generatingQRCodes ? '匯出中...' : '匯出Excel資料'}
-              </Button>
-              <Button
-                variant="contained"
-                size="medium"
-                startIcon={<Download />}
-                onClick={handleExportPDF}
-                disabled={generatingQRCodes || shareholders.length === 0}
-                sx={{
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  flex: { xs: '1 1 auto', sm: '0 0 auto' },
-                  minWidth: { xs: '100%', sm: 'auto' },
-                }}
-              >
-                {generatingQRCodes ? '匯出中...' : '匯出PDF信件'}
-              </Button> */}
-            </Box>
-          </Box>
-
-          {/* 第二行：搜尋欄位（暫時隱藏） */}
-          <Box
-            display="flex"
-            justifyContent="flex-end"
-            alignItems="center"
-            gap={2}
-            marginBottom={2}
-            sx={{
-              flexDirection: { xs: 'column', sm: 'row' }, // 行動裝置垂直排列
-              alignItems: { xs: 'stretch', sm: 'center' }, // 行動裝置拉伸對齊
-              display: 'none', // 暫時隱藏搜尋功能區域
-            }}
-          >
             <TextField
               variant="outlined"
-              placeholder="請輸入搜尋關鍵字"
+              size="small"
+              placeholder="搜尋股東代號、姓名、地址、電話..."
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
               sx={{
-                width: { xs: '100%', sm: '280px' }, // 文檔規範：固定寬度 280px，行動裝置全寬
+                width: { xs: '100%', sm: '320px' },
               }}
               InputProps={{
                 startAdornment: (
@@ -806,7 +772,7 @@ export default function QRCodeBatchPage() {
                 columns={columns}
                 paginationModel={paginationModel}
                 onPaginationModelChange={setPaginationModel}
-                pageSizeOptions={[5, 10, 25, 50]}
+                pageSizeOptions={[25, 50, 100]}
                 disableRowSelectionOnClick
                 loading={loading}
                 autoHeight
