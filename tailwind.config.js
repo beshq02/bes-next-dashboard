@@ -17,6 +17,10 @@ module.exports = {
   		}
   	},
   	extend: {
+  		fontFamily: {
+  			heading: ['Lexend', 'Noto Sans TC', 'sans-serif'],
+  			body: ['Source Sans 3', 'Noto Sans TC', 'sans-serif'],
+  		},
   		colors: {
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
@@ -55,7 +59,33 @@ module.exports = {
   			'color-2': 'hsl(var(--color-2))',
   			'color-3': 'hsl(var(--color-3))',
   			'color-4': 'hsl(var(--color-4))',
-  			'color-5': 'hsl(var(--color-5))'
+  			'color-5': 'hsl(var(--color-5))',
+  			'bes-blue': {
+  				50: '#EFF6FF',
+  				100: '#DBEAFE',
+  				200: '#BFDBFE',
+  				300: '#93C5FD',
+  				400: '#60A5FA',
+  				500: '#2563EB',
+  				600: '#1D4ED8',
+  				700: '#1E40AF',
+  				800: '#1E3A8A',
+  				900: '#172554',
+  				950: '#0F172A',
+  			},
+  			'bes-green': {
+  				50: '#F0FDF4',
+  				100: '#DCFCE7',
+  				200: '#BBF7D0',
+  				300: '#86EFAC',
+  				400: '#4ADE80',
+  				500: '#22C55E',
+  				600: '#16A34A',
+  				700: '#15803D',
+  				800: '#166534',
+  				900: '#14532D',
+  				950: '#052E16',
+  			}
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
