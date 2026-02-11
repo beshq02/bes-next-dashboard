@@ -184,7 +184,7 @@ export default function ThankYouPage() {
                 textAlign: 'center',
               }}
             >
-              中華工程股份有限公司 114 年度 ESG 利害關係人問卷
+              中華工程股份有限公司 ESG 利害關係人問卷
             </Typography>
           </CardContent>
         </Card>

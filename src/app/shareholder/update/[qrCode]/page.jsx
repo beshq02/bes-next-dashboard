@@ -214,7 +214,7 @@ export default function ShareholderUpdatePage() {
           letterSpacing: '1px',
         }}
       >
-        114 年 ESG 利害關係人問卷
+        ESG 利害關係人問卷
       </Typography>
     </Box>
   )
