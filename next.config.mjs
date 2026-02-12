@@ -1,9 +1,20 @@
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   devIndicators: false,
   // 明確指定工作區根目錄
   turbopack: {
-    root: process.cwd(), // 或使用絕對路徑
+    root: process.cwd(),
+  },
+  serverExternalPackages: ['mssql', 'tedious'],
+  outputFileTracingRoot: __dirname,
+  eslint: {
+    // ESLint parser 不支援 optional chaining (?.)，build 時跳過
+    ignoreDuringBuilds: true,
   },
   images: {
     remotePatterns: [
@@ -15,6 +26,14 @@ const nextConfig = {
     ],
   },
   webpack: (config, { isServer }) => {
+    // 移除 @vercel/nft 相關插件，避免 UNC 路徑被解析為 glob 掃描 C:\
+    if (isServer) {
+      config.plugins = config.plugins.filter(plugin => {
+        const name = plugin.constructor.name
+        return name !== 'TraceEntryPointsPlugin'
+      })
+    }
+
     // 只在客戶端構建時添加 fallback
     if (!isServer) {
       config.resolve.fallback = {
