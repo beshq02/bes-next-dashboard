@@ -133,14 +133,26 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
 
     switch (fieldName) {
       case 'city':
+        if (!trimmedValue) {
+          setCityError('請選擇縣市')
+          return false
+        }
         setCityError('')
         return true
 
       case 'district':
+        if (!trimmedValue) {
+          setDistrictError('請選擇鄉鎮市區')
+          return false
+        }
         setDistrictError('')
         return true
 
       case 'address':
+        if (!trimmedValue) {
+          setAddressError('請輸入詳細地址')
+          return false
+        }
         setAddressError('')
         return true
 
@@ -149,7 +161,11 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
         return true
 
       case 'mobilePhone1':
-        if (trimmedValue && !/^09\d{8}$/.test(trimmedValue)) {
+        if (!trimmedValue) {
+          setMobilePhone1Error('請輸入手機號碼')
+          return false
+        }
+        if (!/^09\d{8}$/.test(trimmedValue)) {
           setMobilePhone1Error('手機號碼格式錯誤')
           return false
         }
@@ -248,17 +264,23 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
     if (touchedFields.email) validateField('email', value)
   }
 
-  // 驗證所有欄位（僅格式驗證，無必填檢查）
+  // 驗證所有欄位（含必填檢查）
   const validateAllFields = () => {
     const isValidMobilePhone1 = validateField('mobilePhone1', mobilePhone1)
+    const isValidCity = validateField('city', city)
+    const isValidDistrict = validateField('district', district)
+    const isValidAddress = validateField('address', address)
     const isValidEmail = validateField('email', email)
 
     setTouchedFields({
       mobilePhone1: true,
+      city: true,
+      district: true,
+      address: true,
       email: true,
     })
 
-    return isValidMobilePhone1 && isValidEmail
+    return isValidMobilePhone1 && isValidCity && isValidDistrict && isValidAddress && isValidEmail
   }
 
   // 處理表單提交
@@ -366,30 +388,47 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
   const displayName = (shareholderData?.name || '').replace(/\s+/g, '') || null
 
   return (
-    <Box sx={{ maxWidth: { xs: '100%', sm: 600 }, margin: '0 auto', marginTop: { xs: 2, sm: 4 }, px: { xs: 0, sm: 2 } }}>
+    <Box
+      sx={{
+        maxWidth: { xs: '100%', sm: 600 },
+        margin: '0 auto',
+        marginTop: { xs: 2, sm: 4 },
+        px: { xs: 0, sm: 2 },
+      }}
+    >
       {/* 歡迎詞區塊 */}
-      <Box sx={{ marginBottom: 3 }}>
+      <Box
+        sx={{
+          marginBottom: 3,
+          backgroundColor: '#f8f9fa',
+          borderRadius: { xs: '8px', sm: '12px' },
+          border: '1px solid #e8eaed',
+          p: { xs: 2, sm: 3 },
+        }}
+      >
         <Typography
           component="div"
           variant="body1"
           sx={{
-            fontSize: '16px',
+            fontSize: '15px',
             fontWeight: 400,
             lineHeight: 1.8,
-            color: 'text.primary',
+            color: '#333',
           }}
         >
-          <p style={{ margin: '0 0 0.75em 0' }}>
+          <p style={{ margin: '0 0 0.75em 0', fontSize: '16px' }}>
             {displayName ? <strong style={{ display: 'inline' }}>{displayName}</strong> : null}
             {displayName ? ' ' : ''}股東您好，
           </p>
           <p style={{ margin: '0 0 0.75em 0' }}>
-            感謝您長期以來對中華工程的信任與支持！為督促我們企業能更正向的發展，請您協助
-            <strong>填寫問卷</strong>，我們後續將寄發<strong> 7-11 壹百元商品卡</strong>
-            以為感謝！
+            承蒙您長期以來對中華工程的支持與信任，鑑於您身為本公司的尊榮股東，秉持ESG精神及股東對話的原則，恭喜您獲選本次「ESG問卷」資格，
+完成問卷將獲得<strong>【7-11壹百元商品卡】</strong>。
           </p>
-          <p style={{ margin: 0 }}>
-            為確保商品券能順利寄送，請在填寫問券前確認以下資料並更新您的聯絡地址及電話號碼。
+          <p style={{ margin: '0 0 0.5em 0' }}>
+            為確保商品券能順利寄送，請在填寫問券前確認以下資料並更新您的手機號碼及聯絡地址。
+          </p>
+          <p style={{ margin: 0, fontSize: '13px', color: '#888', textAlign: 'right', paddingTop: 16, paddingBottom: 16 }}>
+            本問卷將於 2026/03/31 截止收件。
           </p>
         </Typography>
       </Box>
@@ -417,12 +456,13 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                   letterSpacing: '0.5px',
                 }}
               >
-                手機號碼
+                手機號碼<span style={{ color: '#d32f2f', marginLeft: '4px' }}>*</span>
               </Typography>
 
               <Stack direction="row" spacing={2}>
                 <TextField
                   label="手機 1"
+                  required
                   type="tel"
                   value={mobilePhone1}
                   onChange={handleMobilePhone1Change}
@@ -531,30 +571,15 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                   letterSpacing: '0.5px',
                 }}
               >
-                聯絡地址
+                聯絡地址<span style={{ color: '#d32f2f', marginLeft: '4px' }}>*</span>
               </Typography>
-
-              {/* 郵遞區號 */}
-              <TextField
-                label="郵遞區號"
-                value={postalCode}
-                onChange={handlePostalCodeChange}
-                fullWidth={false}
-                variant="outlined"
-                size="small"
-                sx={{ ...textFieldSx, mb: 2, width: '120px' }}
-                inputProps={{
-                  maxLength: 5,
-                  inputMode: 'numeric',
-                  'aria-label': '郵遞區號',
-                }}
-              />
 
               {/* 縣市和鄉鎮市區 - 並排下拉選單 */}
               <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
                 <FormControl
                   fullWidth
                   size="small"
+                  required
                   error={!!cityError && touchedFields.city}
                   sx={textFieldSx}
                 >
@@ -573,14 +598,13 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
                       </MenuItem>
                     ))}
                   </Select>
-                  {touchedFields.city && cityError && (
-                    <FormHelperText>{cityError}</FormHelperText>
-                  )}
+                  {touchedFields.city && cityError && <FormHelperText>{cityError}</FormHelperText>}
                 </FormControl>
 
                 <FormControl
                   fullWidth
                   size="small"
+                  required
                   error={!!districtError && touchedFields.district}
                   sx={textFieldSx}
                 >
@@ -609,6 +633,7 @@ export default function DataForm({ shareholderData, qrCode, logId }) {
               {/* 詳細地址 */}
               <TextField
                 label="詳細地址"
+                required
                 value={address}
                 onChange={handleAddressChange}
                 onBlur={() => handleBlur('address')}

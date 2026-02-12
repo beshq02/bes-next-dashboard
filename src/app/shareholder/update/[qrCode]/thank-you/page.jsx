@@ -101,7 +101,7 @@ export default function ThankYouPage() {
                 letterSpacing: '0.5px',
               }}
             >
-              問卷邀請
+              填寫問卷
             </Typography>
 
             {/* 說明文字 + 商品卡圖片 並排 */}
