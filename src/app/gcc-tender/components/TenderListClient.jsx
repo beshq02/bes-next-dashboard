@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { format, isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns'
+import { format, isWithinInterval, parseISO, startOfDay, endOfDay, subDays } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
 import { motion } from 'framer-motion'
 import { Building2, FileSearch } from 'lucide-react'
@@ -11,11 +11,17 @@ import TenderFilters from './TenderFilters'
 import TenderTable from './TenderTable'
 import { fadeIn } from '../lib/animations'
 
-export default function TenderListClient({ initialData = [], fieldMapping = [] }) {
+export default function TenderListClient({ initialData = [], fieldMapping = [], tenderTypes = [], tenderRanges = [], procurementCategories = [] }) {
   // 篩選狀態
   const [searchTerm, setSearchTerm] = useState('')
-  const [procurementLevel, setProcurementLevel] = useState('all')
-  const [dateRange, setDateRange] = useState({ from: null, to: null })
+  const defaultCategory = procurementCategories.find(c => c.if_display)?.cate || 'all'
+  const [procurementCategory, setProcurementCategory] = useState(defaultCategory)
+  const defaultLevel = tenderRanges.find(r => r.if_display)?.range || 'all'
+  const [procurementLevel, setProcurementLevel] = useState(defaultLevel)
+  const [tenderTypeId, setTenderTypeId] = useState('all')
+  const [budgetMin, setBudgetMin] = useState(null)
+  const defaultDateRange = { from: subDays(new Date(), 6), to: new Date() }
+  const [dateRange, setDateRange] = useState(defaultDateRange)
 
   // 分頁狀態
   const [currentPage, setCurrentPage] = useState(1)
@@ -48,8 +54,26 @@ export default function TenderListClient({ initialData = [], fieldMapping = [] }
       )
     }
 
+    // 招標類型篩選（依 tender_type_id）
+    if (tenderTypeId !== 'all') {
+      result = result.filter(item => item.tender_type_id === Number(tenderTypeId))
+    }
+
+    // 採購性質篩選
+    if (procurementCategory !== 'all') {
+      result = result.filter(item => item.procurement_nature === procurementCategory)
+    }
+
     // 採購級距篩選
-    if (procurementLevel !== 'all') {
+    if (procurementLevel === 'custom') {
+      if (budgetMin != null && budgetMin > 0) {
+        const threshold = budgetMin * 100000000 // 億 → 元
+        result = result.filter(item => {
+          const amt = parseFloat(String(item.budget ?? '').replace(/,/g, ''))
+          return !isNaN(amt) && amt >= threshold
+        })
+      }
+    } else if (procurementLevel !== 'all') {
       if (procurementLevel === 'null') {
         result = result.filter(item => !item.procurement_level)
       } else {
@@ -109,7 +133,7 @@ export default function TenderListClient({ initialData = [], fieldMapping = [] }
     })
 
     return result
-  }, [initialData, searchTerm, procurementLevel, dateRange, sortConfig])
+  }, [initialData, searchTerm, tenderTypeId, procurementCategory, procurementLevel, budgetMin, dateRange, sortConfig])
 
   // 分頁資料
   const paginatedData = useMemo(() => {
@@ -122,10 +146,13 @@ export default function TenderListClient({ initialData = [], fieldMapping = [] }
   // 重設篩選
   const handleResetFilters = useCallback(() => {
     setSearchTerm('')
-    setProcurementLevel('all')
-    setDateRange({ from: null, to: null })
+    setProcurementCategory(defaultCategory)
+    setProcurementLevel(defaultLevel)
+    setBudgetMin(null)
+    setTenderTypeId('all')
+    setDateRange({ from: subDays(new Date(), 6), to: new Date() })
     setCurrentPage(1)
-  }, [])
+  }, [defaultCategory, defaultLevel])
 
   // 篩選變更時重設頁碼
   const handleSearchChange = useCallback(value => {
@@ -135,6 +162,23 @@ export default function TenderListClient({ initialData = [], fieldMapping = [] }
 
   const handleProcurementLevelChange = useCallback(value => {
     setProcurementLevel(value)
+    if (value === 'custom') setBudgetMin(20)
+    else setBudgetMin(null)
+    setCurrentPage(1)
+  }, [])
+
+  const handleBudgetMinChange = useCallback(value => {
+    setBudgetMin(value)
+    setCurrentPage(1)
+  }, [])
+
+  const handleProcurementCategoryChange = useCallback(value => {
+    setProcurementCategory(value)
+    setCurrentPage(1)
+  }, [])
+
+  const handleTenderTypeChange = useCallback(value => {
+    setTenderTypeId(value)
     setCurrentPage(1)
   }, [])
 
@@ -172,8 +216,17 @@ export default function TenderListClient({ initialData = [], fieldMapping = [] }
       <TenderFilters
         searchTerm={searchTerm}
         onSearchChange={handleSearchChange}
+        procurementCategory={procurementCategory}
+        onProcurementCategoryChange={handleProcurementCategoryChange}
+        procurementCategories={procurementCategories}
         procurementLevel={procurementLevel}
         onProcurementLevelChange={handleProcurementLevelChange}
+        tenderRanges={tenderRanges}
+        budgetMin={budgetMin}
+        onBudgetMinChange={handleBudgetMinChange}
+        tenderTypeId={tenderTypeId}
+        onTenderTypeChange={handleTenderTypeChange}
+        tenderTypes={tenderTypes}
         dateRange={dateRange}
         onDateRangeChange={handleDateRangeChange}
         onResetFilters={handleResetFilters}

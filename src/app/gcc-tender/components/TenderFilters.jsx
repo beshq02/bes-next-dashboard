@@ -11,25 +11,89 @@ import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Badge } from '@/components/ui/badge'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from '@/components/ui/input-group'
+// 招標類型配色（與表格列底色對應）
+const TENDER_TYPE_TOGGLE_STYLES = {
+  招標公告: {
+    dot: 'bg-blue-400',
+    active:
+      'data-[state=on]:bg-blue-100 data-[state=on]:text-blue-700 data-[state=on]:border-blue-300',
+  },
+  公開閱覽: {
+    dot: 'bg-violet-400',
+    active:
+      'data-[state=on]:bg-violet-100 data-[state=on]:text-violet-700 data-[state=on]:border-violet-300',
+  },
+  決標公告: {
+    dot: 'bg-emerald-400',
+    active:
+      'data-[state=on]:bg-emerald-100 data-[state=on]:text-emerald-700 data-[state=on]:border-emerald-300',
+  },
+  無法決標: {
+    dot: 'bg-rose-400',
+    active:
+      'data-[state=on]:bg-rose-100 data-[state=on]:text-rose-700 data-[state=on]:border-rose-300',
+  },
+}
 
-// 採購級距選項
-const PROCUREMENT_LEVELS = [
-  { value: 'all', label: '全部' },
-  { value: '巨額', label: '巨額' },
-  { value: '查核金額以上未達巨額', label: '查核金額以上' },
-  { value: 'null', label: '未分類' },
-]
+// 級距顯示名稱對應（簡稱）
+const RANGE_LABELS = {
+  巨額: '巨額',
+  查核金額以上未達巨額: '查核金額以上',
+  公告金額以上未達查核金額: '公告金額以上',
+  未達公告金額: '未達公告',
+}
 
 export default function TenderFilters({
   searchTerm,
   onSearchChange,
+  procurementCategory,
+  onProcurementCategoryChange,
+  procurementCategories = [],
   procurementLevel,
   onProcurementLevelChange,
+  tenderRanges = [],
+  tenderTypeId,
+  onTenderTypeChange,
+  tenderTypes = [],
+  budgetMin,
+  onBudgetMinChange,
   dateRange,
   onDateRangeChange,
   onResetFilters,
 }) {
+  // 動態組合招標類型選項：tender_type（依 display_order，僅 if_display=true），多於一項時加「全部」
+  const visibleTypes = tenderTypes
+    .filter(t => t.if_display)
+    .map(t => ({ value: String(t.id), label: t.type }))
+  const typeOptions = [
+    ...(visibleTypes.length > 1 ? [{ value: 'all', label: '全部' }] : []),
+    ...visibleTypes,
+  ]
+
+  // 動態組合採購性質選項：proctrg_cate（依 display_order，僅 if_display=true），多於一項時加「全部」
+  const visibleCategories = procurementCategories
+    .filter(c => c.if_display)
+    .map(c => ({ value: c.cate, label: c.cate }))
+  const categoryOptions = [
+    ...(visibleCategories.length > 1 ? [{ value: 'all', label: '全部' }] : []),
+    ...visibleCategories,
+  ]
+
+  // 動態組合採購級距選項：tender_range（依 display_order，僅 if_display=true），多於一項時加「全部」
+  const visibleRanges = tenderRanges
+    .filter(r => r.if_display)
+    .map(r => ({ value: r.range, label: RANGE_LABELS[r.range] || r.range }))
+  const levelOptions = [
+    ...(visibleRanges.length > 1 ? [{ value: 'all', label: '全部' }] : []),
+    ...visibleRanges,
+  ]
+
   // Debounce 搜尋輸入
   const [localSearch, setLocalSearch] = useState(searchTerm)
 
@@ -51,42 +115,50 @@ export default function TenderFilters({
       return '選擇日期範圍'
     }
     if (dateRange.from && dateRange.to) {
-      return `${format(dateRange.from, 'yyyy/MM/dd')} - ${format(dateRange.to, 'yyyy/MM/dd')}`
+      return `${format(dateRange.from, 'yyyy年MM月dd日')} - ${format(dateRange.to, 'yyyy年MM月dd日')}`
     }
     if (dateRange.from) {
-      return `${format(dateRange.from, 'yyyy/MM/dd')} 起`
+      return `${format(dateRange.from, 'yyyy年MM月dd日')} 起`
     }
-    return `至 ${format(dateRange.to, 'yyyy/MM/dd')}`
+    return `至 ${format(dateRange.to, 'yyyy年MM月dd日')}`
   }
 
-  // 檢查是否有啟用的篩選
+  // 檢查是否有啟用的篩選（預設值不算啟用）
+  const defaultCategory = visibleCategories.length > 0 ? visibleCategories[0].value : 'all'
+  const defaultLevel = visibleRanges.length > 0 ? visibleRanges[0].value : 'all'
   const hasActiveFilters =
-    searchTerm || procurementLevel !== 'all' || dateRange.from || dateRange.to
+    searchTerm ||
+    procurementCategory !== defaultCategory ||
+    procurementLevel !== defaultLevel ||
+    tenderTypeId !== 'all' ||
+    dateRange.from ||
+    dateRange.to ||
+    budgetMin
 
   return (
     <div className="space-y-4 rounded-lg border border-bes-blue-100 bg-white p-4">
-      {/* 第一行：搜尋框 + 日期選擇器 */}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        {/* 搜尋輸入框 */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder="搜尋標案名稱、機關名稱、標案案號..."
-            value={localSearch}
-            onChange={e => setLocalSearch(e.target.value)}
-            className="pl-9 pr-9 focus-visible:ring-bes-blue-500"
-          />
-          {localSearch && (
-            <button
-              onClick={() => setLocalSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 hover:text-slate-600"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+      {/* 第一行：搜尋框 */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Input
+          placeholder="搜尋標案名稱、機關名稱、標案案號..."
+          value={localSearch}
+          onChange={e => setLocalSearch(e.target.value)}
+          className="pl-9 pr-9 focus-visible:ring-bes-blue-500"
+        />
+        {localSearch && (
+          <button
+            onClick={() => setLocalSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 hover:text-slate-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
 
-        {/* 日期範圍選擇器 */}
+      {/* 第二行：公告日期篩選 */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <span className="whitespace-nowrap text-sm text-slate-500">公告日期：</span>
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -124,9 +196,62 @@ export default function TenderFilters({
         </Popover>
       </div>
 
-      {/* 第二行：採購級距篩選 + 重設按鈕 */}
+      {/* 第三行：招標類型篩選 */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <span className="whitespace-nowrap text-sm text-slate-500">招標類型：</span>
+        <ToggleGroup
+          type="single"
+          value={tenderTypeId}
+          onValueChange={value => value && onTenderTypeChange(value)}
+          className="flex-wrap"
+        >
+          {typeOptions.map(type => {
+            const style = TENDER_TYPE_TOGGLE_STYLES[type.label]
+            return (
+              <ToggleGroupItem
+                key={type.value}
+                value={type.value}
+                aria-label={type.label}
+                className={cn(
+                  'cursor-pointer border',
+                  style
+                    ? style.active
+                    : 'data-[state=on]:bg-bes-blue-600 data-[state=on]:text-white'
+                )}
+              >
+                {style && <span className={cn('inline-block size-2.5 rounded-full', style.dot)} />}
+                {type.label}
+              </ToggleGroupItem>
+            )
+          })}
+        </ToggleGroup>
+      </div>
+
+      {/* 第三行：採購性質篩選 */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <span className="whitespace-nowrap text-sm text-slate-500">採購性質：</span>
+        <ToggleGroup
+          type="single"
+          value={procurementCategory}
+          onValueChange={value => value && onProcurementCategoryChange(value)}
+          className="flex-wrap"
+        >
+          {categoryOptions.map(cat => (
+            <ToggleGroupItem
+              key={cat.value}
+              value={cat.value}
+              aria-label={cat.label}
+              className="cursor-pointer data-[state=on]:bg-bes-blue-600 data-[state=on]:text-white"
+            >
+              {cat.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
+      {/* 第四行：採購級距篩選 + 自訂預算 + 重設按鈕 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="whitespace-nowrap text-sm text-slate-500">採購級距：</span>
           <ToggleGroup
             type="single"
@@ -134,7 +259,7 @@ export default function TenderFilters({
             onValueChange={value => value && onProcurementLevelChange(value)}
             className="flex-wrap"
           >
-            {PROCUREMENT_LEVELS.map(level => (
+            {levelOptions.map(level => (
               <ToggleGroupItem
                 key={level.value}
                 value={level.value}
@@ -144,7 +269,37 @@ export default function TenderFilters({
                 {level.label}
               </ToggleGroupItem>
             ))}
+            <ToggleGroupItem
+              value="custom"
+              aria-label="自訂"
+              className="cursor-pointer data-[state=on]:bg-bes-blue-600 data-[state=on]:text-white"
+            >
+              自訂
+            </ToggleGroupItem>
           </ToggleGroup>
+          {procurementLevel === 'custom' && (
+            <InputGroup className="w-40">
+              <InputGroupAddon>
+                <InputGroupText>NT$</InputGroupText>
+              </InputGroupAddon>
+              <InputGroupInput
+                type="number"
+                min="0"
+                step="1"
+                placeholder="20"
+                value={budgetMin ?? ''}
+                onKeyDown={e => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
+                onChange={e => {
+                  const v = e.target.value.replace(/\D/g, '')
+                  onBudgetMinChange(v ? Number(v) : null)
+                }}
+                className="text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupText>億 以上</InputGroupText>
+              </InputGroupAddon>
+            </InputGroup>
+          )}
         </div>
 
         {/* 重設篩選按鈕 */}
@@ -160,39 +315,6 @@ export default function TenderFilters({
           </Button>
         )}
       </div>
-
-      {/* 已啟用的篩選標籤 */}
-      {hasActiveFilters && (
-        <div className="flex flex-wrap gap-2 border-t border-bes-blue-50 pt-2">
-          {searchTerm && (
-            <Badge variant="secondary" className="gap-1 bg-bes-blue-50 text-bes-blue-700">
-              搜尋：{searchTerm}
-              <button onClick={() => onSearchChange('')} className="cursor-pointer">
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {procurementLevel !== 'all' && (
-            <Badge variant="secondary" className="gap-1 bg-bes-blue-50 text-bes-blue-700">
-              級距：{PROCUREMENT_LEVELS.find(l => l.value === procurementLevel)?.label}
-              <button onClick={() => onProcurementLevelChange('all')} className="cursor-pointer">
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {(dateRange.from || dateRange.to) && (
-            <Badge variant="secondary" className="gap-1 bg-bes-blue-50 text-bes-blue-700">
-              日期：{formatDateRange()}
-              <button
-                onClick={() => onDateRangeChange({ from: null, to: null })}
-                className="cursor-pointer"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-        </div>
-      )}
     </div>
   )
 }

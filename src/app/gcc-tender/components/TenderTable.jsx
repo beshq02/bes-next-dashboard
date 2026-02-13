@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useMemo, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, FileText } from 'lucide-react'
@@ -26,7 +27,36 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from '@/components/ui/pagination'
-import { formatBudget, getProcurementLevelBadge } from '../lib/utils'
+import { formatBudget, getTenderTypeRowStyle } from '../lib/utils'
+
+// 拖曳調整寬度的 handle
+function ResizeHandle({ onResize }) {
+  const handleMouseDown = useCallback(e => {
+    e.preventDefault()
+    e.stopPropagation()
+    const startX = e.clientX
+    const th = e.target.closest('th')
+    const startWidth = th.offsetWidth
+
+    const onMouseMove = ev => {
+      const newWidth = Math.max(60, startWidth + ev.clientX - startX)
+      onResize(newWidth)
+    }
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }, [onResize])
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[3px] cursor-col-resize rounded-full bg-slate-300 transition-colors hover:bg-bes-blue-500 active:bg-bes-blue-600"
+    />
+  )
+}
 
 // 排序圖示
 function SortIcon({ column, sortConfig }) {
@@ -40,10 +70,10 @@ function SortIcon({ column, sortConfig }) {
   )
 }
 
-// 表頭元件
-function SortableHeader({ column, label, sortConfig, onSort, className }) {
+// 表頭元件（含 resize handle）
+function SortableHeader({ column, label, sortConfig, onSort, width, onResize, className }) {
   return (
-    <TableHead className={className}>
+    <TableHead className={cn('relative', className)} style={width ? { width } : undefined}>
       <button
         onClick={() => onSort(column)}
         className="flex cursor-pointer items-center transition-colors hover:text-bes-blue-600"
@@ -51,6 +81,17 @@ function SortableHeader({ column, label, sortConfig, onSort, className }) {
         {label}
         <SortIcon column={column} sortConfig={sortConfig} />
       </button>
+      {onResize && <ResizeHandle onResize={onResize} />}
+    </TableHead>
+  )
+}
+
+// 一般表頭（含 resize handle）
+function ResizableHead({ children, width, onResize, className }) {
+  return (
+    <TableHead className={cn('relative', className)} style={width ? { width } : undefined}>
+      {children}
+      {onResize && <ResizeHandle onResize={onResize} />}
     </TableHead>
   )
 }
@@ -140,8 +181,50 @@ export default function TenderTable({
 }) {
   const router = useRouter()
 
+  // 欄位寬度狀態（可拖曳調整）
+  const [colWidths, setColWidths] = useState({
+    index: 50,
+    tender_no: 140,
+    tender_name: 300,
+    org_name: 180,
+    tender_method: 100,
+    announcement_date: 110,
+    deadline: 100,
+    review_period: 200,
+    budget: 120,
+    action: 80,
+  })
+
+  const handleColResize = useCallback((col, width) => {
+    setColWidths(prev => ({ ...prev, [col]: width }))
+  }, [])
+
+  // 動態判斷哪些欄位有資料，全空則隱藏
+  const visibleCols = useMemo(() => {
+    const has = key => data.some(item => item[key] != null && item[key] !== '')
+    return {
+      tender_no: has('tender_no'),
+      tender_name: true, // 必顯示
+      org_name: has('org_name'),
+      tender_method: has('tender_method'),
+      announcement_date: has('announcement_date'),
+      deadline: has('deadline'),
+      review_period: data.some(item => item.review_start_date && item.review_end_date),
+      budget: has('budget'),
+      action: has('detail_url'),
+    }
+  }, [data])
+
   const handleRowClick = item => {
-    router.push(`/gcc-tender/${item.id}`)
+    if (item.source_type === 'tender') {
+      router.push(`/gcc-tender/${item.id}`)
+    } else if (item.source_type === 'tpread') {
+      router.push(`/gcc-tender/tpread/${item.id}`)
+    } else if (item.source_type === 'award') {
+      router.push(`/gcc-tender/award/${item.id}`)
+    } else if (item.detail_url) {
+      window.open(item.detail_url, '_blank')
+    }
   }
 
   if (data.length === 0) {
@@ -169,41 +252,90 @@ export default function TenderTable({
       {/* 表格 */}
       <div className="overflow-x-auto">
         <TooltipProvider>
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow className="bg-bes-blue-50/50 hover:bg-bes-blue-50/50">
+                <ResizableHead
+                  width={colWidths.index}
+                  onResize={w => handleColResize('index', w)}
+                  className="text-center"
+                >
+                  #
+                </ResizableHead>
+                {visibleCols.tender_no && (
+                  <ResizableHead
+                    width={colWidths.tender_no}
+                    onResize={w => handleColResize('tender_no', w)}
+                  >
+                    標案案號
+                  </ResizableHead>
+                )}
                 <SortableHeader
                   column="tender_name"
                   label="標案名稱"
                   sortConfig={sortConfig}
                   onSort={onSort}
-                  className="min-w-[300px]"
+                  width={colWidths.tender_name}
+                  onResize={w => handleColResize('tender_name', w)}
                 />
-                <SortableHeader
-                  column="org_name"
-                  label="機關名稱"
-                  sortConfig={sortConfig}
-                  onSort={onSort}
-                  className="min-w-[180px]"
-                />
-                <SortableHeader
-                  column="announcement_date"
-                  label="公告日期"
-                  sortConfig={sortConfig}
-                  onSort={onSort}
-                  className="min-w-[110px]"
-                />
-                <TableHead className="min-w-[100px]">截止日期</TableHead>
-                <SortableHeader
-                  column="budget"
-                  label="預算金額"
-                  sortConfig={sortConfig}
-                  onSort={onSort}
-                  className="min-w-[120px] text-right"
-                />
-                <TableHead className="min-w-[100px]">採購級距</TableHead>
-                <TableHead className="min-w-[100px]">招標方式</TableHead>
-                <TableHead className="w-[80px]">操作</TableHead>
+                {visibleCols.org_name && (
+                  <SortableHeader
+                    column="org_name"
+                    label="機關名稱"
+                    sortConfig={sortConfig}
+                    onSort={onSort}
+                    width={colWidths.org_name}
+                    onResize={w => handleColResize('org_name', w)}
+                  />
+                )}
+                {visibleCols.tender_method && (
+                  <ResizableHead
+                    width={colWidths.tender_method}
+                    onResize={w => handleColResize('tender_method', w)}
+                  >
+                    招標方式
+                  </ResizableHead>
+                )}
+                {visibleCols.announcement_date && (
+                  <SortableHeader
+                    column="announcement_date"
+                    label="公告日期"
+                    sortConfig={sortConfig}
+                    onSort={onSort}
+                    width={colWidths.announcement_date}
+                    onResize={w => handleColResize('announcement_date', w)}
+                  />
+                )}
+                {visibleCols.deadline && (
+                  <ResizableHead
+                    width={colWidths.deadline}
+                    onResize={w => handleColResize('deadline', w)}
+                  >
+                    截止投標
+                  </ResizableHead>
+                )}
+                {visibleCols.review_period && (
+                  <ResizableHead
+                    width={colWidths.review_period}
+                    onResize={w => handleColResize('review_period', w)}
+                  >
+                    公開閱覽期間
+                  </ResizableHead>
+                )}
+                {visibleCols.budget && (
+                  <SortableHeader
+                    column="budget"
+                    label="預算金額"
+                    sortConfig={sortConfig}
+                    onSort={onSort}
+                    width={colWidths.budget}
+                    onResize={w => handleColResize('budget', w)}
+                    className="text-right"
+                  />
+                )}
+                {visibleCols.action && (
+                  <TableHead className="relative" style={{ width: colWidths.action }}>操作</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <AnimatePresence mode="wait">
@@ -214,83 +346,123 @@ export default function TenderTable({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                {data.map(item => (
+                {data.map((item, idx) => (
                   <TableRow
                     key={item.id}
                     onClick={() => handleRowClick(item)}
-                    className="cursor-pointer transition-colors hover:bg-bes-blue-50/30"
+                    className={cn(
+                      'cursor-pointer transition-colors',
+                      getTenderTypeRowStyle(item.tender_type_name) || 'hover:bg-bes-blue-50/30'
+                    )}
                   >
+                    <TableCell className="text-center text-sm text-slate-500 tabular-nums">
+                      {(currentPage - 1) * 20 + idx + 1}
+                    </TableCell>
+                    {visibleCols.tender_no && (
+                      <TableCell>
+                        <span className="text-sm text-slate-600">{item.tender_no || '-'}</span>
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center gap-2">
-                            <span className="line-clamp-2">{item.tender_name || '-'}</span>
-                            {item.history_count > 1 && (
-                              <Badge variant="secondary" className="shrink-0 text-xs">
-                                {item.history_count} 次公告
-                              </Badge>
-                            )}
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-md">
-                          <p>{item.tender_name}</p>
-                          {item.tender_no && (
-                            <p className="mt-1 text-xs text-slate-400">案號：{item.tender_no}</p>
-                          )}
-                        </TooltipContent>
-                      </Tooltip>
+                      <div className="flex items-center gap-2">
+                        <span className="line-clamp-2">{item.tender_name || '-'}</span>
+                        {item.is_correction && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="shrink-0 cursor-default">🔄</span>
+                            </TooltipTrigger>
+                            <TooltipContent>更正公告</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {item.history_count > 1 && (
+                          <Badge variant="secondary" className="shrink-0 text-xs">
+                            {item.history_count} 次公告
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-slate-600">{item.org_name || '-'}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm tabular-nums">
-                        {item.announcement_date
-                          ? format(new Date(item.announcement_date), 'yyyy/MM/dd')
-                          : '-'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-slate-600">{item.deadline || '-'}</span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="text-sm font-medium tabular-nums">
-                            {formatBudget(item.budget)}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{item.budget ? `NT$ ${item.budget}` : '未提供'}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>{getProcurementLevelBadge(item.procurement_level)}</TableCell>
-                    <TableCell>
-                      <span className="text-sm text-slate-600">{item.tender_method || '-'}</span>
-                    </TableCell>
-                    <TableCell>
-                      {item.detail_url && (
+                    {visibleCols.org_name && (
+                      <TableCell>
+                        <span className="text-sm text-slate-600">{item.org_name || '-'}</span>
+                      </TableCell>
+                    )}
+                    {visibleCols.tender_method && (
+                      <TableCell>
+                        <span className="text-sm text-slate-600">{item.tender_method || '-'}</span>
+                      </TableCell>
+                    )}
+                    {visibleCols.announcement_date && (
+                      <TableCell>
+                        <span className="text-sm tabular-nums">
+                          {item.announcement_date
+                            ? format(new Date(item.announcement_date), 'yyyy年MM月dd日')
+                            : '-'}
+                        </span>
+                      </TableCell>
+                    )}
+                    {visibleCols.deadline && (
+                      <TableCell>
+                        <span className="text-sm tabular-nums">
+                          {item.deadline
+                            ? format(new Date(item.deadline), 'yyyy年MM月dd日')
+                            : '-'}
+                        </span>
+                      </TableCell>
+                    )}
+                    {visibleCols.review_period && (
+                      <TableCell>
+                        <span className="text-sm tabular-nums text-slate-600">
+                          {item.review_start_date && item.review_end_date
+                            ? (() => {
+                                const s = new Date(item.review_start_date)
+                                const e = new Date(item.review_end_date)
+                                const sameYear = s.getFullYear() === e.getFullYear()
+                                const sameMonth = sameYear && s.getMonth() === e.getMonth()
+                                const endFmt = sameMonth ? 'dd日' : sameYear ? 'MM月dd日' : 'yyyy年MM月dd日'
+                                return `${format(s, 'yyyy年MM月dd日')} ~ ${format(e, endFmt)}`
+                              })()
+                            : '-'}
+                        </span>
+                      </TableCell>
+                    )}
+                    {visibleCols.budget && (
+                      <TableCell className="text-right">
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={e => {
-                                e.stopPropagation()
-                                window.open(item.detail_url, '_blank')
-                              }}
-                              className="h-8 w-8 cursor-pointer"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
+                            <span className="text-sm font-medium tabular-nums">
+                              {formatBudget(item.budget)}
+                            </span>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>開啟政府採購網</p>
+                            <p>{item.budget ? `NT$ ${item.budget}` : '未提供'}</p>
                           </TooltipContent>
                         </Tooltip>
-                      )}
-                    </TableCell>
+                      </TableCell>
+                    )}
+                    {visibleCols.action && (
+                      <TableCell>
+                        {item.detail_url && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  window.open(item.detail_url, '_blank')
+                                }}
+                                className="h-8 w-8 cursor-pointer"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>開啟政府採購網</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </motion.tbody>

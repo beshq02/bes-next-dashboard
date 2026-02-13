@@ -17,6 +17,8 @@ export default function CommitteeTable({ committee }) {
             <th className="px-3 py-2 text-left font-medium text-slate-600">職業</th>
             <th className="px-3 py-2 text-left font-medium text-slate-600">服務機關</th>
             <th className="px-3 py-2 text-left font-medium text-slate-600">職稱</th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600">經歷/專長</th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600">學歷</th>
           </tr>
         </thead>
         <tbody>
@@ -28,10 +30,12 @@ export default function CommitteeTable({ committee }) {
               }`}
             >
               <td className="px-3 py-2">{member.seq_no || index + 1}</td>
-              <td className="px-3 py-2 font-medium">{member.member_name || '-'}</td>
+              <td className="px-3 py-2 font-medium whitespace-nowrap">{member.member_name || '-'}</td>
               <td className="px-3 py-2">{member.occupation || '-'}</td>
               <td className="px-3 py-2">{member.organization || '-'}</td>
-              <td className="px-3 py-2">{member.job_title || '-'}</td>
+              <td className="px-3 py-2 whitespace-nowrap">{member.job_title || '-'}</td>
+              <td className="px-3 py-2">{member.job_description || '-'}</td>
+              <td className="px-3 py-2">{member.education || '-'}</td>
             </tr>
           ))}
         </tbody>

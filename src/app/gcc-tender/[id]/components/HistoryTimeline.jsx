@@ -2,14 +2,44 @@
 
 import { useState } from 'react'
 import { ExternalLink, History, Clock, ChevronDown, ChevronRight } from 'lucide-react'
+import { format } from 'date-fns'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Timeline,
+  TimelineItem,
+  TimelineIcon,
+  TimelineConnector,
+  TimelineContent,
+  TimelineHeader,
+} from '@/components/ui/timeline'
 
 // ─── 變動比對邏輯 ────────────────────────────────────────────
+
+// 在歷程中完全不顯示的欄位
+const HISTORY_HIDDEN_FIELDS = new Set([
+  'a01',      // 機關代碼
+  'c02_01',   // 採購評選委員名單連結
+  'd01_07',   // 投標須知下載連結
+  'd01_08',   // 投標檔案名稱
+  'd01_09',   // 投標檔案路徑
+  'd01_10',   // Markdown 檔案路徑
+  'd01_11',   // Markdown 轉換狀態
+  'd01_12',   // Markdown 轉換時間
+])
+
+// 不追蹤變動的欄位（不顯示舊資料）
+const HISTORY_NO_CHANGE_FIELDS = new Set([
+  'c04',  // 新增公告傳輸次數
+  'c05',  // 更正序號
+  'c07',  // 公告日
+  'c08',  // 原公告日
+  'd03',  // 是否異動招標文件
+])
 
 const TRACKED_ANNOUNCEMENT_FIELDS = [
   { key: 'org_name', label: '機關名稱' },
@@ -59,6 +89,8 @@ function getDetailChanges(currentDetail, previousDetail, fieldMapping) {
 
   const changes = []
   for (const field of fieldMapping) {
+    if (HISTORY_HIDDEN_FIELDS.has(field.field_code)) continue
+    if (HISTORY_NO_CHANGE_FIELDS.has(field.field_code)) continue
     const currVal = currentDetail[field.field_code]
     const prevVal = previousDetail[field.field_code]
     if ((currVal == null || currVal === '') && (prevVal == null || prevVal === '')) continue
@@ -92,7 +124,7 @@ function ChangeLine({ change }) {
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap">
           <p className="font-medium">{change.label}</p>
-          <p className="mt-1 text-slate-300 line-through">{change.oldVal}</p>
+          <p className="mt-1 text-slate-300">{change.oldVal}</p>
           <p className="mt-0.5">{change.newVal}</p>
         </TooltipContent>
       </Tooltip>
@@ -102,117 +134,126 @@ function ChangeLine({ change }) {
 
 // ─── 單筆歷史記錄 ─────────────────────────────────────────
 
-function HistoryEntry({ record, isLatest, announcementChanges, detailChanges }) {
+function HistoryEntry({ record, isLatest, isLast, announcementChanges, detailChanges }) {
   const [expanded, setExpanded] = useState(false)
   const hasChanges = announcementChanges.length > 0 || detailChanges.length > 0
 
   return (
-    <div className="relative pl-10 pb-4 last:pb-0">
-      {/* Timeline dot */}
-      <div
-        className={`absolute left-2 top-1.5 h-3 w-3 rounded-full border-2 ${
-          isLatest
-            ? 'border-bes-blue-500 bg-bes-blue-500'
-            : 'border-slate-300 bg-white'
-        }`}
-      />
-
-      <div className="space-y-1">
-        {/* 摘要行 */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="flex items-center gap-1.5 text-sm font-medium text-bes-blue-800">
-            <Clock className="h-3.5 w-3.5" />
-            {record.announcement_date || '未知日期'}
-          </span>
-          {isLatest && (
-            <Badge className="bg-bes-blue-500 text-white">最新</Badge>
-          )}
-          {record.is_correction && (
-            <Badge variant="outline" className="border-amber-300 text-amber-600">更正公告</Badge>
-          )}
-          {record.detail_url && (
-            <a
-              href={record.detail_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-bes-blue-600 hover:underline"
-            >
-              <ExternalLink className="h-3 w-3" />
-            </a>
+    <TimelineItem>
+      <div className="grid grid-cols-[auto_1fr] items-start gap-4">
+        {/* 左側：圖標 + 連接線 */}
+        <div className="flex flex-col items-center">
+          <TimelineIcon
+            icon={<Clock className="size-3.5" />}
+            color={isLatest ? 'primary' : 'muted'}
+            iconSize="sm"
+            className="size-7"
+          />
+          {!isLast && (
+            <TimelineConnector
+              status="completed"
+              className="mt-2 h-full min-h-8"
+            />
           )}
         </div>
 
-        {/* 變動計數摘要 */}
-        {hasChanges ? (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">
-              {announcementChanges.length > 0 && (
-                <span>{announcementChanges.length} 項公告變動</span>
-              )}
-              {announcementChanges.length > 0 && detailChanges.length > 0 && (
-                <span> · </span>
-              )}
-              {detailChanges.length > 0 && (
-                <span>{detailChanges.length} 項詳細變動</span>
-              )}
+        {/* 右側：內容 */}
+        <TimelineContent className="pb-2">
+          {/* 摘要行 */}
+          <TimelineHeader className="flex-wrap">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-bes-blue-800">
+              {record.announcement_date ? format(new Date(record.announcement_date), 'yyyy年MM月dd日') : '未知日期'}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setExpanded(prev => !prev)}
-              className="h-6 cursor-pointer px-2 text-xs text-bes-blue-600 hover:bg-bes-blue-50 hover:text-bes-blue-700"
-            >
-              {expanded ? <ChevronDown className="mr-1 h-3 w-3" /> : <ChevronRight className="mr-1 h-3 w-3" />}
-              {expanded ? '收合' : '查看變動'}
-            </Button>
-          </div>
-        ) : (
-          <span className="text-xs text-slate-400">首次公告</span>
-        )}
+            {isLatest && (
+              <Badge className="bg-bes-blue-500 text-white">最新</Badge>
+            )}
+            {record.is_correction && (
+              <Badge variant="outline" className="border-amber-300 text-amber-600">更正公告</Badge>
+            )}
+            {record.detail_url && (
+              <a
+                href={record.detail_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-bes-blue-600 hover:underline"
+              >
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </TimelineHeader>
 
-        {/* 展開的變動細節 */}
-        <AnimatePresence>
-          {expanded && hasChanges && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="mt-2 space-y-2">
+          {/* 變動計數摘要 */}
+          {hasChanges ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">
                 {announcementChanges.length > 0 && (
-                  <div className="rounded-md bg-amber-50 px-3 py-2">
-                    <p className="mb-1.5 text-xs font-medium text-amber-700">
-                      公告變動：{announcementChanges.map(c => c.label).join('、')}
-                    </p>
-                    <div className="space-y-0.5">
-                      {announcementChanges.map(change => (
-                        <ChangeLine key={change.key} change={change} />
-                      ))}
-                    </div>
-                  </div>
+                  <span>{announcementChanges.length} 項公告變動</span>
                 )}
-
+                {announcementChanges.length > 0 && detailChanges.length > 0 && (
+                  <span> · </span>
+                )}
                 {detailChanges.length > 0 && (
-                  <div className="rounded-md bg-bes-blue-50 px-3 py-2">
-                    <p className="mb-1.5 text-xs font-medium text-bes-blue-700">
-                      詳細變動：{detailChanges.slice(0, 5).map(c => c.label.replace(/\[.*?\]\s*/, '')).join('、')}
-                      {detailChanges.length > 5 && '...'}
-                    </p>
-                    <div className="space-y-0.5">
-                      {detailChanges.map(change => (
-                        <ChangeLine key={change.key} change={change} />
-                      ))}
-                    </div>
-                  </div>
+                  <span>{detailChanges.length} 項詳細變動</span>
                 )}
-              </div>
-            </motion.div>
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setExpanded(prev => !prev)}
+                className="h-6 cursor-pointer px-2 text-xs text-bes-blue-600 hover:bg-bes-blue-50 hover:text-bes-blue-700"
+              >
+                {expanded ? <ChevronDown className="mr-1 h-3 w-3" /> : <ChevronRight className="mr-1 h-3 w-3" />}
+                {expanded ? '收合' : '查看變動'}
+              </Button>
+            </div>
+          ) : (
+            <span className="text-xs text-slate-400">首次公告</span>
           )}
-        </AnimatePresence>
+
+          {/* 展開的變動細節 */}
+          <AnimatePresence>
+            {expanded && hasChanges && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-2 space-y-2">
+                  {announcementChanges.length > 0 && (
+                    <div className="rounded-md bg-amber-50 px-3 py-2">
+                      <p className="mb-1.5 text-xs font-medium text-amber-700">
+                        公告變動：{announcementChanges.map(c => c.label).join('、')}
+                      </p>
+                      <div className="space-y-0.5">
+                        {announcementChanges.map(change => (
+                          <ChangeLine key={change.key} change={change} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {detailChanges.length > 0 && (
+                    <div className="rounded-md bg-bes-blue-50 px-3 py-2">
+                      <p className="mb-1.5 text-xs font-medium text-bes-blue-700">
+                        詳細變動：{detailChanges.slice(0, 5).map(c => c.label.replace(/\[.*?\]\s*/, '')).join('、')}
+                        {detailChanges.length > 5 && '...'}
+                      </p>
+                      <div className="space-y-0.5">
+                        {detailChanges.map(change => (
+                          <ChangeLine key={change.key} change={change} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </TimelineContent>
       </div>
-    </div>
+    </TimelineItem>
   )
 }
 
@@ -257,12 +298,10 @@ export default function HistoryTimeline({ history, currentAnnouncement, detailMa
             className="overflow-hidden"
           >
             <CardContent className="pt-0">
-              <div className="relative space-y-0">
-                {/* Timeline line */}
-                <div className="absolute left-[15px] top-2 bottom-2 w-px bg-gradient-to-b from-bes-blue-500 to-bes-green-400" />
-
+              <Timeline size="sm">
                 {allRecords.map((record, index) => {
                   const isLatest = index === 0
+                  const isLast = index === allRecords.length - 1
                   const previousRecord = index < allRecords.length - 1 ? allRecords[index + 1] : null
                   const announcementChanges = previousRecord ? getAnnouncementChanges(record, previousRecord) : []
                   const detailChanges = previousRecord
@@ -274,12 +313,13 @@ export default function HistoryTimeline({ history, currentAnnouncement, detailMa
                       key={record.id}
                       record={record}
                       isLatest={isLatest}
+                      isLast={isLast}
                       announcementChanges={announcementChanges}
                       detailChanges={detailChanges}
                     />
                   )
                 })}
-              </div>
+              </Timeline>
             </CardContent>
           </motion.div>
         )}
