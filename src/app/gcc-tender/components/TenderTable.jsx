@@ -1,59 +1,56 @@
 'use client'
 
-import { useState, useMemo, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
-import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, FileText } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { format } from 'date-fns'
+import { useRouter } from 'next/navigation'
+import { useMemo, useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowUp, FileText, ArrowDown, ArrowUpDown, ExternalLink, Eye, Loader2, Bookmark } from 'lucide-react'
+
 import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Table, TableRow, TableCell, TableHead, TableHeader } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import {
   Pagination,
-  PaginationContent,
   PaginationItem,
   PaginationLink,
   PaginationNext,
+  PaginationContent,
   PaginationPrevious,
   PaginationEllipsis,
 } from '@/components/ui/pagination'
+
 import { formatBudget, getTenderTypeRowStyle } from '../lib/utils'
 
 // 拖曳調整寬度的 handle
 function ResizeHandle({ onResize }) {
-  const handleMouseDown = useCallback(e => {
-    e.preventDefault()
-    e.stopPropagation()
-    const startX = e.clientX
-    const th = e.target.closest('th')
-    const startWidth = th.offsetWidth
+  const handleMouseDown = useCallback(
+    e => {
+      e.preventDefault()
+      e.stopPropagation()
+      const startX = e.clientX
+      const th = e.target.closest('th')
+      const startWidth = th.offsetWidth
 
-    const onMouseMove = ev => {
-      const newWidth = Math.max(60, startWidth + ev.clientX - startX)
-      onResize(newWidth)
-    }
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
-    }
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
-  }, [onResize])
+      const onMouseMove = ev => {
+        const newWidth = Math.max(60, startWidth + ev.clientX - startX)
+        onResize(newWidth)
+      }
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove)
+        document.removeEventListener('mouseup', onMouseUp)
+      }
+      document.addEventListener('mousemove', onMouseMove)
+      document.addEventListener('mouseup', onMouseUp)
+    },
+    [onResize]
+  )
 
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[3px] cursor-col-resize rounded-full bg-slate-300 transition-colors hover:bg-bes-blue-500 active:bg-bes-blue-600"
+      className="absolute right-0 top-1/2 h-4 w-[3px] -translate-y-1/2 cursor-col-resize rounded-full bg-slate-300 transition-colors hover:bg-bes-blue-500 active:bg-bes-blue-600"
     />
   )
 }
@@ -61,12 +58,12 @@ function ResizeHandle({ onResize }) {
 // 排序圖示
 function SortIcon({ column, sortConfig }) {
   if (sortConfig.key !== column) {
-    return <ArrowUpDown className="ml-1 h-4 w-4 text-slate-300" />
+    return <ArrowUpDown className="ml-1 size-4 text-slate-300" />
   }
   return sortConfig.direction === 'asc' ? (
-    <ArrowUp className="ml-1 h-4 w-4 text-bes-blue-600" />
+    <ArrowUp className="ml-1 size-4 text-bes-blue-600" />
   ) : (
-    <ArrowDown className="ml-1 h-4 w-4 text-bes-blue-600" />
+    <ArrowDown className="ml-1 size-4 text-bes-blue-600" />
   )
 }
 
@@ -178,6 +175,8 @@ export default function TenderTable({
   onPageChange,
   sortConfig,
   onSort,
+  favorites = new Set(),
+  onToggleFavorite,
 }) {
   const router = useRouter()
 
@@ -192,7 +191,7 @@ export default function TenderTable({
     deadline: 100,
     review_period: 200,
     budget: 120,
-    action: 80,
+    action: 120,
   })
 
   const handleColResize = useCallback((col, width) => {
@@ -211,27 +210,35 @@ export default function TenderTable({
       deadline: has('deadline'),
       review_period: data.some(item => item.review_start_date && item.review_end_date),
       budget: has('budget'),
-      action: has('detail_url'),
+      action: true,
     }
   }, [data])
 
-  const handleRowClick = item => {
-    if (item.source_type === 'tender') {
-      router.push(`/gcc-tender/${item.id}`)
-    } else if (item.source_type === 'tpread') {
-      router.push(`/gcc-tender/tpread/${item.id}`)
-    } else if (item.source_type === 'award') {
-      router.push(`/gcc-tender/award/${item.id}`)
-    } else if (item.detail_url) {
-      window.open(item.detail_url, '_blank')
-    }
+  const [loadingId, setLoadingId] = useState(null)
+
+  const getDetailPath = item => {
+    if (item.source_type === 'tender') return `/gcc-tender/${item.id}`
+    if (item.source_type === 'tpread') return `/gcc-tender/tpread/${item.id}`
+    if (item.source_type === 'award') return `/gcc-tender/award/${item.id}`
+    return null
+  }
+
+  const handleView = async (e, item) => {
+    e.stopPropagation()
+    const path = getDetailPath(item)
+    if (!path) return
+    setLoadingId(item.id)
+    await router.prefetch(path)
+    router.push(path)
   }
 
   if (data.length === 0) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
-        <FileText className="mx-auto mb-4 h-12 w-12 text-slate-300" />
-        <h3 className="mb-2 text-lg font-medium font-heading text-bes-blue-900">沒有找到符合的標案</h3>
+        <FileText className="mx-auto mb-4 size-12 text-slate-300" />
+        <h3 className="mb-2 font-heading text-lg font-medium text-bes-blue-900">
+          沒有找到符合的標案
+        </h3>
         <p className="text-sm text-slate-500">請嘗試調整篩選條件</p>
       </div>
     )
@@ -242,7 +249,7 @@ export default function TenderTable({
       {/* 表格資訊列 */}
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
         <span className="text-sm text-slate-600">
-          共 <span className="font-medium font-heading text-bes-blue-900">{totalCount}</span> 筆標案
+          共 <span className="font-heading font-medium text-bes-blue-900">{totalCount}</span> 筆標案
         </span>
         <span className="text-sm text-slate-500">
           第 {currentPage} / {totalPages} 頁
@@ -334,7 +341,9 @@ export default function TenderTable({
                   />
                 )}
                 {visibleCols.action && (
-                  <TableHead className="relative" style={{ width: colWidths.action }}>操作</TableHead>
+                  <TableHead className="relative" style={{ width: colWidths.action }}>
+                    操作
+                  </TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -349,13 +358,12 @@ export default function TenderTable({
                 {data.map((item, idx) => (
                   <TableRow
                     key={item.id}
-                    onClick={() => handleRowClick(item)}
                     className={cn(
-                      'cursor-pointer transition-colors',
+                      'transition-colors',
                       getTenderTypeRowStyle(item.tender_type_name) || 'hover:bg-bes-blue-50/30'
                     )}
                   >
-                    <TableCell className="text-center text-sm text-slate-500 tabular-nums">
+                    <TableCell className="text-center text-sm tabular-nums text-slate-500">
                       {(currentPage - 1) * 20 + idx + 1}
                     </TableCell>
                     {visibleCols.tender_no && (
@@ -374,9 +382,9 @@ export default function TenderTable({
                             <TooltipContent>更正公告</TooltipContent>
                           </Tooltip>
                         )}
-                        {item.history_count > 1 && (
+                        {item.transmission_count > 1 && (
                           <Badge variant="secondary" className="shrink-0 text-xs">
-                            {item.history_count} 次公告
+                            第 {item.transmission_count} 次公告
                           </Badge>
                         )}
                       </div>
@@ -403,9 +411,7 @@ export default function TenderTable({
                     {visibleCols.deadline && (
                       <TableCell>
                         <span className="text-sm tabular-nums">
-                          {item.deadline
-                            ? format(new Date(item.deadline), 'yyyy年MM月dd日')
-                            : '-'}
+                          {item.deadline ? format(new Date(item.deadline), 'yyyy年MM月dd日') : '-'}
                         </span>
                       </TableCell>
                     )}
@@ -418,7 +424,11 @@ export default function TenderTable({
                                 const e = new Date(item.review_end_date)
                                 const sameYear = s.getFullYear() === e.getFullYear()
                                 const sameMonth = sameYear && s.getMonth() === e.getMonth()
-                                const endFmt = sameMonth ? 'dd日' : sameYear ? 'MM月dd日' : 'yyyy年MM月dd日'
+                                const endFmt = sameMonth
+                                  ? 'dd日'
+                                  : sameYear
+                                    ? 'MM月dd日'
+                                    : 'yyyy年MM月dd日'
                                 return `${format(s, 'yyyy年MM月dd日')} ~ ${format(e, endFmt)}`
                               })()
                             : '-'}
@@ -441,7 +451,7 @@ export default function TenderTable({
                     )}
                     {visibleCols.action && (
                       <TableCell>
-                        {item.detail_url && (
+                        <div className="flex items-center gap-1">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
@@ -449,18 +459,65 @@ export default function TenderTable({
                                 size="icon"
                                 onClick={e => {
                                   e.stopPropagation()
-                                  window.open(item.detail_url, '_blank')
+                                  onToggleFavorite?.(item.tender_no)
                                 }}
-                                className="h-8 w-8 cursor-pointer"
+                                className="size-8 cursor-pointer"
                               >
-                                <ExternalLink className="h-4 w-4" />
+                                <Bookmark
+                                  className={cn(
+                                    'size-4 transition-colors',
+                                    favorites.has(item.tender_no)
+                                      ? 'fill-bes-blue-500 text-bes-blue-500'
+                                      : 'text-slate-400 hover:text-bes-blue-400'
+                                  )}
+                                />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>開啟政府採購網</p>
+                              <p>{favorites.has(item.tender_no) ? '取消收藏' : '加入收藏'}</p>
                             </TooltipContent>
                           </Tooltip>
-                        )}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={loadingId === item.id}
+                                onClick={e => handleView(e, item)}
+                                className="size-8 cursor-pointer"
+                              >
+                                {loadingId === item.id ? (
+                                  <Loader2 className="size-4 animate-spin" />
+                                ) : (
+                                  <Eye className="size-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>檢視詳細</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          {item.detail_url && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    window.open(item.detail_url, '_blank')
+                                  }}
+                                  className="size-8 cursor-pointer"
+                                >
+                                  <ExternalLink className="size-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>開啟政府採購網</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>

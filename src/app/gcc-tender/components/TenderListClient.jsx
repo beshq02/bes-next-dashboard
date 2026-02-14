@@ -1,15 +1,11 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { format, isWithinInterval, parseISO, startOfDay, endOfDay, subDays } from 'date-fns'
-import { zhTW } from 'date-fns/locale'
-import { motion } from 'framer-motion'
-import { Building2, FileSearch } from 'lucide-react'
-
+import { isWithinInterval, parseISO, startOfDay, endOfDay, subDays } from 'date-fns'
 import MetricCards from './MetricCards'
 import TenderFilters from './TenderFilters'
 import TenderTable from './TenderTable'
-import { fadeIn } from '../lib/animations'
+import { useFavorites } from './useFavorites'
 
 export default function TenderListClient({ initialData = [], fieldMapping = [], tenderTypes = [], tenderRanges = [], procurementCategories = [] }) {
   // 篩選狀態
@@ -22,6 +18,9 @@ export default function TenderListClient({ initialData = [], fieldMapping = [], 
   const [budgetMin, setBudgetMin] = useState(null)
   const defaultDateRange = { from: subDays(new Date(), 6), to: new Date() }
   const [dateRange, setDateRange] = useState(defaultDateRange)
+
+  // 收藏
+  const { favorites, toggle: toggleFavorite } = useFavorites()
 
   // 分頁狀態
   const [currentPage, setCurrentPage] = useState(1)
@@ -188,27 +187,7 @@ export default function TenderListClient({ initialData = [], fieldMapping = [], 
   }, [])
 
   return (
-    <div className="container mx-auto space-y-6 px-4 py-6">
-      {/* 品牌 Page Header */}
-      <motion.div
-        {...fadeIn}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-bes-blue-600 via-bes-blue-500 to-bes-green-500 px-6 py-6 text-white shadow-lg sm:px-8 sm:py-8"
-      >
-        {/* 裝飾圖案 */}
-        <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10" />
-        <div className="pointer-events-none absolute -bottom-4 right-20 h-20 w-20 rounded-full bg-white/5" />
-
-        <div className="relative flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
-            <FileSearch className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">政府採購標案查詢</h1>
-            <p className="mt-1 font-body text-sm text-white/80">政府電子採購網標案資料檢視系統</p>
-          </div>
-        </div>
-      </motion.div>
-
+    <div className="space-y-6">
       {/* 統計卡片 */}
       <MetricCards data={initialData} filteredData={filteredData} />
 
@@ -241,6 +220,8 @@ export default function TenderListClient({ initialData = [], fieldMapping = [], 
         onPageChange={setCurrentPage}
         sortConfig={sortConfig}
         onSort={handleSort}
+        favorites={favorites}
+        onToggleFavorite={toggleFavorite}
       />
     </div>
   )

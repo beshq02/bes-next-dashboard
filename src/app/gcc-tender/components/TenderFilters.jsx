@@ -41,13 +41,6 @@ const TENDER_TYPE_TOGGLE_STYLES = {
   },
 }
 
-// 級距顯示名稱對應（簡稱）
-const RANGE_LABELS = {
-  巨額: '巨額',
-  查核金額以上未達巨額: '查核金額以上',
-  公告金額以上未達查核金額: '公告金額以上',
-  未達公告金額: '未達公告',
-}
 
 export default function TenderFilters({
   searchTerm,
@@ -88,7 +81,7 @@ export default function TenderFilters({
   // 動態組合採購級距選項：tender_range（依 display_order，僅 if_display=true），多於一項時加「全部」
   const visibleRanges = tenderRanges
     .filter(r => r.if_display)
-    .map(r => ({ value: r.range, label: RANGE_LABELS[r.range] || r.range }))
+    .map(r => ({ value: r.range, label: r.range }))
   const levelOptions = [
     ...(visibleRanges.length > 1 ? [{ value: 'all', label: '全部' }] : []),
     ...visibleRanges,

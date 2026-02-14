@@ -92,20 +92,8 @@ export default function FileList({ files, emptyText, getDownloadUrl }) {
                 </div>
               </div>
             </div>
-            <div className="shrink-0">
-              {file.download_status === 'success' && downloadUrl ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="h-7 cursor-pointer gap-1 border-emerald-300 px-2.5 text-xs text-emerald-700 hover:bg-emerald-50"
-                >
-                  <a href={downloadUrl} download={file.file_name}>
-                    <Download className="size-3" />
-                    下載
-                  </a>
-                </Button>
-              ) : file.download_status === 'success' ? (
+            <div className="flex shrink-0 items-center gap-2">
+              {file.download_status === 'success' ? (
                 <Badge className="gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
                   <CheckCircle2 className="size-3" />
                   已下載
@@ -120,6 +108,19 @@ export default function FileList({ files, emptyText, getDownloadUrl }) {
                   <Clock className="size-3" />
                   待下載
                 </Badge>
+              )}
+              {file.download_status === 'success' && downloadUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="h-7 cursor-pointer gap-1 border-emerald-300 px-2.5 text-xs text-emerald-700 hover:bg-emerald-50"
+                >
+                  <a href={downloadUrl} download={file.file_name}>
+                    <Download className="size-3" />
+                    下載
+                  </a>
+                </Button>
               )}
             </div>
           </div>

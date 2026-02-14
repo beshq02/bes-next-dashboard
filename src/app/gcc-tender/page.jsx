@@ -197,10 +197,7 @@ function mergeAndDeduplicate(tenderData, awardData, tpreadData) {
     const key = `${item.tender_type_id}:${item.tender_name}`
     if (!item.tender_name) continue
     if (!uniqueMap.has(key)) {
-      const historyCount = allData.filter(
-        d => d.tender_type_id === item.tender_type_id && d.tender_name === item.tender_name
-      ).length
-      uniqueMap.set(key, { ...item, history_count: historyCount })
+      uniqueMap.set(key, { ...item })
     }
   }
 
